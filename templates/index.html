@@ -1,0 +1,43 @@
+﻿{% extends 'layout.html' %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <h1 class="form-title">Bienvenido<br/> por favor inicie sesión</h1>
+    
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div class="alert-flash">
+        <ul class="flash-list">
+            {% for message in messages %}
+            <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+    {% endwith %}
+    
+    <div class="login-form">
+        <form action="/auth" method="post">
+            <div class="form-group">
+                <label for="username" class="form-label">Usuario:</label>
+                <input type="text" id="username" name="username" class="form-control" placeholder="Usuario" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="password" class="form-label">Contraseña:</label>
+                <input type="password" id="password" name="password" class="form-control" placeholder="Contraseña" pattern="((?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W]).{8,64})" required>
+                <small class="form-text text-muted d-block text-center mt-2">La contraseña debe contener al menos 8 caracteres, una mayúscula, una minúscula, un número y un carácter especial.</small>
+            </div>
+            
+            <div class="btn-center-container">
+                <button class="btn btn-primary" type="submit" id="submitF" name="submitF">Ingresar</button>
+                <button class="btn btn-danger" type="reset" id="resetF" name="resetF">Borrar</button>
+            </div>
+        </form>
+        
+        <a href="{{url_for('auth.olvido')}}" class="forgot-link">¿Olvidó su contraseña?</a>
+    </div>
+</div>
+{% endblock %}

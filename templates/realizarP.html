@@ -1,0 +1,266 @@
+﻿{% extends 'layout.html' %}
+{% block title %}Realizar Provisión{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const form = document.querySelector('form');
+        const submitBtn = document.getElementById('realizar');
+        const comboSelector = document.getElementById('combo_selector');
+        const standardContainer = document.getElementById('standard_products_container');
+        const previewContainer = document.getElementById('combo_preview_container');
+        const previewBody = document.getElementById('combo_preview_body');
+        
+        comboSelector.addEventListener('change', function() {
+            const val = this.value;
+            if (val === 'standard') {
+                standardContainer.style.display = 'block';
+                previewContainer.style.display = 'none';
+            } else {
+                standardContainer.style.display = 'none';
+                previewContainer.style.display = 'block';
+                
+                // Cargar items del combo
+                const selectedOption = this.options[this.selectedIndex];
+                const items = JSON.parse(selectedOption.getAttribute('data-items') || '[]');
+                const description = selectedOption.getAttribute('data-description') || 'Sin descripción';
+                
+                // Actualizar nombre y descripción en la UI
+                const nameElement = document.getElementById('selected_combo_name');
+                const descElement = document.getElementById('selected_combo_description');
+                
+                if (nameElement) nameElement.textContent = selectedOption.textContent.trim();
+                if (descElement) descElement.textContent = description;
+
+                previewBody.innerHTML = '';
+                items.forEach(item => {
+                    const row = `<tr><td>${item.nombre}</td><td>${item.cantidad}</td></tr>`;
+                    previewBody.insertAdjacentHTML('beforeend', row);
+                });
+            }
+        });
+
+        form.addEventListener('submit', function(e) {
+            const nominaSeleccionada = document.querySelector('input[name="Nomina"]:checked');
+            
+            if (!nominaSeleccionada) {
+                e.preventDefault();
+                alert('Por favor, seleccione el tipo de nómina');
+                return false;
+            }
+            
+            if (!confirm('¿Está seguro de que desea realizar esta provisión?')) {
+                e.preventDefault();
+                return false;
+            }
+            
+            // Deshabilitar botón para evitar doble envío
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = 'Procesando...';
+        });
+    });
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <!-- AÑADE ESTO PARA DEBUG (opcional) -->
+    <!--
+    <div style="background: #ffe6e6; padding: 10px; margin: 10px; border: 1px solid red;">
+        <h5>Debug Info:</h5>
+        <p>Tipo Provisión: {{ session.get('tipo_provision', 'NO DEFINIDO') }}</p>
+        <p>Semana Provisión: {{ session.get('semProv', 'NO DEFINIDO') }}</p>
+        <p>Combo: {{ session.get('combo', 'NO DEFINIDO') }}</p>
+    </div>
+    -->
+
+    <!-- Mensajes Flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ 'danger' if category == 'error' else 'success' if category == 'success' else 'warning' }} alert-dismissible fade show">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <form method="post" action="{{ url_for('provision.make_provision') }}">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h4 class="mb-0">Realizar Provisión</h4>
+                    </div>
+                    <div class="card-body">
+                        {% if show_duplicate_warning %}
+                        <div class="alert alert-warning border-warning shadow-sm mb-4">
+                            <div class="d-flex align-items-center">
+                                <i class="fas fa-exclamation-triangle fa-2x me-3 text-warning"></i>
+                                <div>
+                                    <h5 class="alert-heading">¡Atención! Provisión ya registrada</h5>
+                                    <p class="mb-0">Ya existe una provisión en el historial para la <strong>Semana {{ semana_duplicada }}</strong> y nómina <strong>{{ nomina_duplicada }}</strong>.</p>
+                                </div>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <a href="{{ url_for('provision.make_provision') }}" class="btn btn-outline-secondary btn-sm">Volver</a>
+                            </div>
+                        </div>
+                        {% endif %}
+                        <div class="row">
+                            <!-- Información de fecha y semana -->
+                            <div class="col-md-4">
+                                <div class="mb-4">
+                                    <h5>Fecha Actual:</h5>
+                                    <p class="text-muted">{{ session.get('fecha', 'Fecha no disponible') }}</p>
+                                    
+                                    <h5>Semana №:</h5>
+                                    <p class="text-muted">{{ session.get('semana', 'N/A') }}</p>
+                                    
+                                    <h5>Detalles:</h5>
+                                    <p id="selected_combo_name" class="text-primary fw-bold mb-1">Combo Estándar</p>
+                                    <p id="selected_combo_description" class="small text-muted italic mb-2">Provisión configurada para esta semana</p>
+                                    <small class="text-muted">
+                                        Tipo: {{ session.get('tipo_provision', 'semanal')|title }}
+                                    </small>
+                                </div>
+                            </div>
+                            
+                            <!-- Selección de Combo -->
+                            <div class="col-md-4 mb-3">
+                                <h5>Seleccionar Productos:</h5>
+                                <div class="mb-3">
+                                    <label class="form-label">Elija el combo a distribuir:</label>
+                                    <select name="combo_id" id="combo_selector" class="form-select">
+                                        <option value="standard" selected>Provisión Estándar (Actual)</option>
+                                        {% for combo in combos | default([]) %}
+                                        <option value="{{ combo.id }}" data-items='{{ combo['items'] | tojson }}' data-description="{{ combo.descripcion }}">
+                                            {{ combo.nombre }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
+                                    <small class="text-muted d-block mt-1">Usa la provisión configurada para esta semana o selecciona un combo predefinido.</small>
+                                </div>
+                                <hr>
+                                <div id="combo_preview_container" style="display: none;">
+                                    <h6>Productos del Combo Seleccionado:</h6>
+                                    <div class="table-responsive">
+                                        <table class="table table-sm table-bordered">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th class="small">Producto</th>
+                                                    <th class="small">Cant.</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="combo_preview_body"></tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Tabla de productos estándar (solo visible si selecciona estándar) -->
+                            <div class="col-md-4" id="standard_products_container">
+                                <h5>Productos Estándar:</h5>
+                                {% if session.get('combo') %}
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Producto</th>
+                                                <th>Cantidad</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for nombre, cantidad in session['combo'] %}
+                                            <tr>
+                                                <td>{{ nombre }}</td>
+                                                <td>{{ cantidad }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <div class="alert alert-warning">
+                                    No hay productos estándar configurados.
+                                </div>
+                                {% endif %}
+                            </div>
+                            
+                            <!-- Selección de nómina -->
+                            <div class="col-md-4">
+                                <h5>Seleccione el tipo de Nómina:</h5>
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" id="nomSem" name="Nomina" value="1" required>
+                                        <label class="form-check-label" for="nomSem">
+                                            Nómina Semanal
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" id="nomQuin" name="Nomina" value="2" required>
+                                        <label class="form-check-label" for="nomQuin">
+                                            Nómina Quincenal
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-grid">
+                                    <button id="realizar" class="btn btn-primary btn-lg" type="submit">
+                                        Realizar Provisión
+                                    </button>
+                                </div>
+                                
+                                <!-- Información adicional -->
+                                <div class="mt-3">
+                                    <small class="text-muted">
+                                        <strong>Total de productos:</strong> {{ session['combo']|length if session['combo'] else 0 }}
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+            
+            <!-- Enlaces adicionales -->
+            <div class="mt-3 text-center">
+                <a href="{{ url_for('history.history') }}" class="btn btn-outline-secondary btn-sm">
+                    Ver Historial de Provisiones
+                </a>
+                <a href="{{ url_for('main.main_page') }}" class="btn btn-outline-dark btn-sm">
+                    Volver al Inicio
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .card {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border: none;
+        border-radius: 10px;
+    }
+    
+    .table th {
+        background-color: #f8f9fa;
+        font-weight: 600;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+        border: none;
+        border-radius: 8px;
+        padding: 12px 24px;
+        font-weight: 600;
+    }
+    
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #0056b3 0%, #004085 100%);
+        transform: translateY(-2px);
+        transition: all 0.3s ease;
+    }
+</style>
+{% endblock %}

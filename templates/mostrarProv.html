@@ -1,0 +1,307 @@
+﻿{% extends 'layout.html' %}
+{% block title %}Resultados de Provisión{% endblock %}
+
+{% block script %}
+<script src="{{ url_for('static', filename='jspdf.umd.min.js') }}"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script type="text/javascript">
+    $(document).ready(function() {
+        // Función para imprimir
+        $("#btnPrint1").on("click", function () {
+            var divContents = $("#dvContainer1").html();
+            var printWindow = window.open('', '', 'height=600,width=800');
+            printWindow.document.write('<html><head><title>Empleados Asignados</title>');
+            printWindow.document.write('<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">');
+            printWindow.document.write('</head><body>');
+            printWindow.document.write(divContents);
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.print();
+        });
+
+        $("#btnPrint2").on("click", function () {
+            var divContents = $("#dvContainer2").html();
+            var printWindow = window.open('', '', 'height=600,width=800');
+            printWindow.document.write('<html><head><title>Empleados Invalidados</title>');
+            printWindow.document.write('<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">');
+            printWindow.document.write('</head><body>');
+            printWindow.document.write(divContents);
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            printWindow.print();
+        });
+
+        // Función para exportar a PDF
+        function exportToPDF(divId, filename) {
+            const { jsPDF } = window.jspdf;
+            var doc = new jsPDF();
+            
+            // Agregar contenido HTML al PDF
+            doc.html(document.getElementById(divId), {
+                callback: function (doc) {
+                    doc.save(filename + '.pdf');
+                },
+                margin: [10, 10, 10, 10],
+                autoPaging: 'text',
+                x: 0,
+                y: 0,
+                width: 190,
+                windowWidth: 800
+            });
+        }
+    });
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Encabezado -->
+    <div class="row mb-4">
+        <div class="col-12 text-center">
+            <h1>Resultados de Provisión</h1>
+            <p class="lead">
+                Nómina {% if session['nomina']=='1' %}Semanal{% elif session['nomina']=='2' %}Quincenal{% endif %} 
+                - Semana #{{ session['semana'] }} - Combo#{{ session['semProv'] }}
+            </p>
+        </div>
+    </div>
+
+    <!-- Mensaje de advertencia si ya existe provisión -->
+    {% if session.get('provExiste') == True %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning text-center">
+                <h4>⚠️ NOTA: Ya existe una lista de provisión para este tipo de Nómina</h4>
+                <p class="mb-0">Verificar en Histórico</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Resumen Estadístico -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-white bg-primary">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Total Asignados</h5>
+                    <h2 class="card-text">{{ session['asignados'] | length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-warning">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Total Invalidados</h5>
+                    <h2 class="card-text">{{ session['invalidados'] | length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-info">
+                <div class="card-body text-center">
+                    <h5 class="card-title">Total General</h5>
+                    <h2 class="card-text">{{ (session['asignados'] | length) + (session['invalidados'] | length) }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección de Empleados Asignados -->
+    {% if session['asignados'] | length != 0 %}
+    <div class="row mb-5">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">✅ Empleados Asignados para Entrega de Beneficio</h5>
+                    <span class="badge bg-light text-dark">{{ session['asignados'] | length }} empleados</span>
+                </div>
+                <div class="card-body p-0">
+                    <div id="dvContainer1" class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                        <table class="table table-bordered table-hover table-striped mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Cédula</th>
+                                    <th>Nombre</th>
+                                    <th>Apellido</th>
+                                    <th>Departamento</th>
+                                    <th>ID Empleado</th>
+                                    <th>Estatus</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cedula, nombre, apellido, departamento, idempleado in session['asignados'] %}
+                                <tr>
+                                    <td>{{ cedula }}</td>
+                                    <td>{{ nombre }}</td>
+                                    <td>{{ apellido }}</td>
+                                    <td>{{ departamento }}</td>
+                                    <td>{{ idempleado }}</td>
+                                    <td><span class="badge bg-success">ASIGNADO</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h6>Acciones:</h6>
+                            <form action="/export" method="get" class="d-inline">
+                                <input type="hidden" name="excel" value="ASIGNADOS">
+                                <div class="btn-group" role="group">
+                                    <button type="submit" name="formato" value="xlsx" class="btn btn-success btn-sm">
+                                        📊 Excel
+                                    </button>
+                                    <button type="submit" name="formato" value="xls" class="btn btn-secondary btn-sm">
+                                        📋 Excel 97-2003
+                                    </button>
+                                    <button type="submit" name="formato" value="csv" class="btn btn-info btn-sm">
+                                        📄 CSV
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <button type="button" class="btn btn-danger" id="btnPrint1">
+                                🖨️ Imprimir
+                            </button>
+                            <button type="button" class="btn btn-dark" onclick="exportToPDF('dvContainer1', 'empleados_asignados')">
+                                📑 PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-danger text-center">
+                <h4>❌ Ninguno de los empleados para este tipo de nómina cumplieron los requisitos</h4>
+                <p class="mb-0">Por favor verificar</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Sección de Empleados Invalidados -->
+    {% if session['invalidados'] | length != 0 %}
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">⚠️ Empleados que No Cumplieron Requisitos (Verificar)</h5>
+                    <span class="badge bg-light text-dark">{{ session['invalidados'] | length }} empleados</span>
+                </div>
+                <div class="card-body p-0">
+                    <div id="dvContainer2" class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                        <table class="table table-bordered table-hover table-striped mb-0">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th>Cédula</th>
+                                    <th>Nombre</th>
+                                    <th>Apellido</th>
+                                    <th>Departamento</th>
+                                    <th>ID Empleado</th>
+                                    <th>Estatus</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for cedula, nombre, apellido, departamento, idempleado in session['invalidados'] %}
+                                <tr>
+                                    <td>{{ cedula }}</td>
+                                    <td>{{ nombre }}</td>
+                                    <td>{{ apellido }}</td>
+                                    <td>{{ departamento }}</td>
+                                    <td>{{ idempleado }}</td>
+                                    <td><span class="badge bg-danger">NO CUMPLE REQUISITOS</span></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <h6>Acciones:</h6>
+                            <form action="/export" method="get" class="d-inline">
+                                <input type="hidden" name="excel" value="INVALIDADOS">
+                                <div class="btn-group" role="group">
+                                    <button type="submit" name="formato" value="xlsx" class="btn btn-success btn-sm">
+                                        📊 Excel
+                                    </button>
+                                    <button type="submit" name="formato" value="xls" class="btn btn-secondary btn-sm">
+                                        📋 Excel 97-2003
+                                    </button>
+                                    <button type="submit" name="formato" value="csv" class="btn btn-info btn-sm">
+                                        📄 CSV
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        <div class="col-md-4 text-end">
+                            <button type="button" class="btn btn-danger" id="btnPrint2">
+                                🖨️ Imprimir
+                            </button>
+                            <button type="button" class="btn btn-dark" onclick="exportToPDF('dvContainer2', 'empleados_invalidados')">
+                                📑 PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="row">
+        <div class="col-12">
+            <div class="alert alert-success text-center">
+                <h4>✅ Todos los empleados para este tipo de nómina fueron incluidos</h4>
+                <p class="mb-0">No hay empleados invalidados</p>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Botones de Navegación -->
+    <div class="row mt-4">
+        <div class="col-12 text-center">
+            <a href="{{ url_for('provision.make_provision') }}" class="btn btn-primary">
+                🔄 Realizar Nueva Provisión
+            </a>
+            <a href="{{ url_for('history.history') }}" class="btn btn-outline-secondary">
+                📊 Ver Historial Completo
+            </a>
+            <a href="{{ url_for('auth.index') }}" class="btn btn-outline-dark">
+                🏠 Ir al Inicio
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .sticky-top {
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    
+    .table-responsive {
+        border-radius: 8px;
+    }
+    
+    .card {
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        border: none;
+        margin-bottom: 20px;
+    }
+    
+    .badge {
+        font-size: 0.75em;
+    }
+</style>
+{% endblock %}

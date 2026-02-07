@@ -1,0 +1,131 @@
+{% extends "layout.html" %}
+
+{% block title %}{% if action == 'create' %}Crear Producto{% else %}Editar Producto{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-{% if action == 'create' %}plus{% else %}edit{% endif %}"></i>
+                        {% if action == 'create' %}Crear Nuevo Producto{% else %}Editar Producto{% endif %}
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form method="POST"
+                        action="{% if action == 'create' %}{{ url_for('products.create_product') }}{% else %}{{ url_for('products.edit_product', product_id=product.id) }}{% endif %}">
+
+                        <!-- Nombre del Producto -->
+                        <div class="mb-3">
+                            <label for="nombre" class="form-label">
+                                Nombre del Producto <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="nombre" name="nombre"
+                                value="{{ product.nombre if product else '' }}"
+                                placeholder="Ej: Arroz, Aceite, Pollo Entero" required maxlength="100">
+                            <small class="form-text text-muted">
+                                Nombre único del producto (máximo 100 caracteres)
+                            </small>
+                        </div>
+
+                        <!-- Categoría -->
+                        <div class="mb-3">
+                            <label for="categoria" class="form-label">Categoría</label>
+                            <input type="text" class="form-control" id="categoria" name="categoria"
+                                value="{{ product.categoria if product else '' }}"
+                                placeholder="Ej: Alimentos, Granos, Proteínas" maxlength="50">
+                            <small class="form-text text-muted">
+                                Categoría del producto (opcional)
+                            </small>
+                        </div>
+
+                        <!-- Estado (solo en edición) -->
+                        {% if action == 'edit' %}
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="activo" name="activo" {% if
+                                    product.activo %}checked{% endif %}>
+                                <label class="form-check-label" for="activo">
+                                    Producto Activo
+                                </label>
+                            </div>
+                            <small class="form-text text-muted">
+                                Los productos inactivos no aparecerán en la creación de combos
+                            </small>
+                        </div>
+                        {% endif %}
+
+                        <!-- Información adicional (solo en edición) -->
+                        {% if action == 'edit' and product %}
+                        <div class="alert alert-info">
+                            <strong><i class="fas fa-info-circle"></i> Información:</strong>
+                            <ul class="mb-0 mt-2">
+                                <li><strong>ID:</strong> {{ product.id }}</li>
+                                <li><strong>Fecha de creación:</strong> {{ product.created_at.strftime('%d/%m/%Y %H:%M')
+                                    if product.created_at else 'N/A' }}</li>
+                            </ul>
+                        </div>
+                        {% endif %}
+
+                        <!-- Botones -->
+                        <div class="d-flex justify-content-between mt-4">
+                            <a href="{{ url_for('products.list_products') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i>
+                                {% if action == 'create' %}Crear Producto{% else %}Guardar Cambios{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Ayuda -->
+            <div class="card mt-3">
+                <div class="card-header bg-light">
+                    <h6 class="mb-0"><i class="fas fa-question-circle"></i> Ayuda</h6>
+                </div>
+                <div class="card-body">
+                    <p><strong>Nombre del Producto:</strong> Debe ser único en el sistema. No puede haber dos productos
+                        con el mismo nombre.</p>
+                    <p><strong>Categoría:</strong> Campo opcional para organizar los productos. Ejemplos: Alimentos,
+                        Granos, Proteínas, Condimentos, etc.</p>
+                    {% if action == 'edit' %}
+                    <p><strong>Estado:</strong> Los productos inactivos no se mostrarán al crear combos, pero los combos
+                        existentes que los usen seguirán funcionando.</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Script de validación -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const form = document.querySelector('form');
+        const nombreInput = document.getElementById('nombre');
+
+        form.addEventListener('submit', function (e) {
+            const nombre = nombreInput.value.trim();
+
+            if (!nombre) {
+                e.preventDefault();
+                alert('El nombre del producto es obligatorio');
+                nombreInput.focus();
+                return false;
+            }
+
+            if (nombre.length > 100) {
+                e.preventDefault();
+                alert('El nombre del producto no puede exceder 100 caracteres');
+                nombreInput.focus();
+                return false;
+            }
+        });
+    });
+</script>
+{% endblock %}

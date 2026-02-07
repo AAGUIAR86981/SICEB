@@ -1,0 +1,136 @@
+﻿{% extends "layout.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="main-container">
+    <div class="welcome-header d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="mb-0">Bienvenido, {{ session.get('user', 'Usuario') }}</h1>
+            <p class="lead mb-0">Sistema de Control de Entrega de Beneficios (SICEB)</p>
+        </div>
+        <div class="text-end d-none d-md-block">
+            <h2 class="h4 mb-0"><i class="far fa-calendar-alt me-2"></i>{{ session.get('fecha', '') }}</h2>
+        </div>
+    </div>
+
+    <!-- Tarjetas de Estadísticas -->
+    <div class="row mb-4">
+        <div class="col-md-4 mb-3">
+            <div class="feature-card p-3 text-center">
+                <i class="fas fa-users feature-icon"></i>
+                <h3>{{ stats.total_empleados }}</h3>
+                <p class="text-muted">Total Empleados</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="feature-card p-3 text-center">
+                <i class="fas fa-user-check feature-icon text-success"></i>
+                <h3>{{ stats.empleados_activos }}</h3>
+                <p class="text-muted">Empleados Activos</p>
+            </div>
+        </div>
+        <div class="col-md-4 mb-3">
+            <div class="feature-card p-3 text-center">
+                <i class="fas fa-sitemap feature-icon text-info"></i>
+                <h3>{{ stats.total_departamentos }}</h3>
+                <p class="text-muted">Departamentos</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección de Actividad Reciente y Atajos -->
+    <div class="row">
+        <!-- Últimas Provisiones -->
+        <div class="col-lg-8 mb-4">
+            <div class="card bg-transparent border-0 shadow-sm h-100">
+                <div class="card-header bg-white bg-opacity-50 border-0">
+                    <h5 class="mb-0"><i class="fas fa-history me-2"></i>Procesamientos Recientes</h5>
+                </div>
+                <div class="card-body bg-white bg-opacity-25 pb-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover align-middle">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Nómina</th>
+                                    <th>Semana</th>
+                                    <th>Usuario</th>
+                                    <th class="text-center">Aprob.</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% if ultimas_provisiones %}
+                                    {% for row in ultimas_provisiones %}
+                                    <tr>
+                                        <td>{{ row[6].strftime('%d/%m/%Y %H:%M') if row[6] else 'N/A' }}</td>
+                                        <td><span class="badge bg-{{ 'primary' if row[3] == 'Semanal' else 'info' }}">{{ row[3] }}</span></td>
+                                        <td>Semana {{ row[2] }}</td>
+                                        <td>{{ row[7] }}</td>
+                                        <td class="text-center">
+                                            <span class="badge rounded-pill bg-success">{{ row[8] if row[8] is not none else 0 }}</span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                {% else %}
+                                    <tr>
+                                        <td colspan="5" class="text-center text-muted">No hay registros recientes</td>
+                                    </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="card-footer bg-white bg-opacity-50 border-0 text-center">
+                    <a href="{{ url_for('history.history') }}" class="btn btn-sm btn-outline-primary">Ver todo el historial</a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Atajos Rápidos -->
+        <div class="col-lg-4 mb-4">
+            <div class="card bg-transparent border-0 shadow-sm h-100">
+                <div class="card-header bg-white bg-opacity-50 border-0">
+                    <h5 class="mb-0"><i class="fas fa-bolt me-2"></i>Acciones Rápidas</h5>
+                </div>
+                    <div class="d-flex flex-column gap-3">
+                        <a href="{{ url_for('provision.make_provision') }}" class="btn btn-primary w-100 py-3 d-flex align-items-center justify-content-center">
+                            <i class="fas fa-cube me-2 fa-lg"></i> Realizar Provisión
+                        </a>
+                        
+                        <hr class="my-1">
+                        <p class="text-muted small mb-0 px-2 fw-bold text-uppercase">Gestión de Datos</p>
+                        
+                        {% if check_permission('manage_employees') %}
+                        <a href="{{ url_for('employees.list_employees') }}" class="btn btn-outline-info w-100 py-2 d-flex align-items-center justify-content-center">
+                            <i class="fas fa-users me-2"></i> Gestión de Empleados
+                        </a>
+                        <a href="{{ url_for('employees.create_employee') }}" class="btn btn-outline-primary w-100 py-2 d-flex align-items-center justify-content-center">
+                            <i class="fas fa-user-plus me-2"></i> Ingresar Empleado
+                        </a>
+                        {% endif %}
+                        
+                        {% if check_permission('manage_combos') %}
+                        <a href="{{ url_for('combos.list_combos') }}" class="btn btn-outline-success w-100 py-2 d-flex align-items-center justify-content-center">
+                            <i class="fas fa-boxes me-2"></i> Gestión de Combos
+                        </a>
+                        {% endif %}
+
+                        {% if session.get('isAdmin') == 1 %}
+                        <a href="{{ url_for('admin.admin') }}" class="btn btn-outline-dark w-100 py-2">
+                            <i class="fas fa-cog me-2"></i> Panel de Administración
+                        </a>
+                        {% endif %}
+                    </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Pequeño script para manejar el filtro 'from_json' si no existe en Jinja2
+    // En este caso lo hemos simulado pero deberíamos registrarlo en app.py si es necesario
+</script>
+{% endblock %}

@@ -1,0 +1,200 @@
+{% extends "layout.html" %}
+
+{% block title %}Gestión de Empleados{% endblock %}
+
+{% block extra_css %}
+<style>
+    .employee-card {
+        transition: transform 0.2s;
+        border: none;
+        border-radius: 12px;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+    }
+
+    .employee-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+    }
+
+    .status-badge {
+        font-size: 0.75rem;
+        padding: 0.4em 0.8em;
+        border-radius: 20px;
+    }
+
+    .search-container {
+        background: white;
+        border-radius: 50px;
+        padding: 5px 20px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .search-container input {
+        border: none;
+        padding: 10px;
+    }
+
+    .search-container input:focus {
+        outline: none;
+        box-shadow: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0 text-gray-800">Gestión de Empleados</h1>
+            <!--<p class="text-muted">Administra el personal, sus departamentos y estados de validación.</p>-->
+        </div>
+        <a href="{{ url_for('employees.create_employee') }}"
+            class="btn btn-primary d-flex align-items-center px-4 py-2 shadow-sm rounded-pill">
+            <i class="fas fa-plus me-2"></i> Ingresar Empleado
+        </a>
+    </div>
+
+    <!-- Filtros y Búsqueda -->
+    <div class="card employee-card shadow-sm mb-4">
+        <div class="card-body">
+            <form action="{{ url_for('employees.list_employees') }}" method="GET" class="row g-3">
+                <div class="col-md-5">
+                    <div class="input-group search-container">
+                        <span class="text-muted"><i class="fas fa-search"></i></span>
+                        <input type="text" name="search" class="form-control"
+                            placeholder="Buscar por nombre, CI o departamento..." value="{{ search }}">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <select name="tipo_nomina" class="form-select rounded-pill border-0 shadow-sm"
+                        onchange="this.form.submit()">
+                        <option value="">Todas las Nóminas</option>
+                        <option value="1" {{ 'selected' if tipo_nomina=='1' }}>Semanal</option>
+                        <option value="2" {{ 'selected' if tipo_nomina=='2' }}>Quincenal</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <select name="estado" class="form-select rounded-pill border-0 shadow-sm"
+                        onchange="this.form.submit()">
+                        <option value="">Todos los Estados</option>
+                        <option value="activo" {{ 'selected' if estado=='activo' }}>Activos</option>
+                        <option value="inactivo" {{ 'selected' if estado=='inactivo' }}>Inactivos</option>
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <button type="submit" class="btn btn-dark w-100 rounded-pill shadow-sm">
+                        <i class="fas fa-filter"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tabla de Empleados -->
+    <div class="card employee-card shadow-sm border-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="bg-light text-muted small text-uppercase fw-bold">
+                    <tr>
+                        <th class="ps-4">Cedula de Identidad</th>
+                        <th>Nombre Completo</th>
+                        <th>Departamento</th>
+                        <th>Nómina</th>
+                        <th class="text-center">Estado</th>
+                        <th class="text-end pe-4">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for employee in employees %}
+                    <tr>
+                        <td class="ps-4">
+                            <span class="fw-bold">{{ employee.id_empleado }}</span><br>
+                            <small class="text-muted">CI: {{ employee.cedula }}</small>
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-sm me-3 rounded-circle bg-primary bg-opacity-10 text-primary d-flex align-items-center justify-content-center"
+                                    style="width: 40px; height: 40px;">
+                                    {{ employee.nombre[0] }}{{ employee.apellido[0] }}
+                                </div>
+                                <div>
+                                    <div class="fw-bold">{{ employee.nombre }} {{ employee.apellido }}</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>{{ employee.departamento_nombre }}</td>
+                        <td>
+                            <span
+                                class="badge rounded-pill {{ 'bg-info bg-opacity-10 text-info' if employee.tipo_nomina_id == 1 else 'bg-warning bg-opacity-10 text-warning' }}">
+                                {{ employee.tipo_nomina_nombre }}
+                            </span>
+                        </td>
+                        <td class="text-center">
+                            {% if employee.boolValidacion %}
+                            <span class="badge bg-success bg-opacity-10 text-success status-badge">Activo</span>
+                            {% else %}
+                            <span class="badge bg-danger bg-opacity-10 text-danger status-badge">Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end pe-4">
+                            <div class="btn-group">
+                                <a href="{{ url_for('employees.view_employee', id=employee.id) }}"
+                                    class="btn btn-sm btn-outline-info border-0 rounded-circle me-1" title="Consultar">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{{ url_for('employees.edit_employee', id=employee.id) }}"
+                                    class="btn btn-sm btn-outline-secondary border-0 rounded-circle me-1"
+                                    title="Modificar">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{{ url_for('employees.toggle_status', id=employee.id) }}"
+                                    class="btn btn-sm {{ 'btn-outline-danger' if employee.boolValidacion else 'btn-outline-success' }} border-0 rounded-circle"
+                                    title="{{ 'Desactivar' if employee.boolValidacion else 'Activar' }}"
+                                    onclick="return confirm('¿Seguro que desea cambiar el estado de este empleado?')">
+                                    <i
+                                        class="fas {{ 'fa-user-slash' if employee.boolValidacion else 'fa-user-check' }}"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center py-5">
+                            <img src="/static/images/empty.svg" alt="No hay datos" style="width: 150px; opacity: 0.5;">
+                            <p class="text-muted mt-3">No se encontraron empleados con los filtros seleccionados.</p>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Paginación -->
+        {% if total_pages > 1 %}
+        <div class="card-footer bg-white border-0 py-3">
+            <nav aria-label="Navegación de páginas">
+                <ul class="pagination pagination-sm justify-content-center mb-0">
+                    <li class="page-item {{ 'disabled' if page == 1 }}">
+                        <a class="page-link rounded-pill px-3 me-2"
+                            href="{{ url_for('employees.list_employees', page=page-1, search=search, tipo_nomina=tipo_nomina, estado=estado) }}">Anterior</a>
+                    </li>
+                    {% for p in range(1, total_pages + 1) %}
+                    <li class="page-item {{ 'active' if p == page }}">
+                        <a class="page-link rounded-circle mx-1"
+                            style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;"
+                            href="{{ url_for('employees.list_employees', page=p, search=search, tipo_nomina=tipo_nomina, estado=estado) }}">{{
+                            p }}</a>
+                    </li>
+                    {% endfor %}
+                    <li class="page-item {{ 'disabled' if page == total_pages }}">
+                        <a class="page-link rounded-pill px-3 ms-2"
+                            href="{{ url_for('employees.list_employees', page=page+1, search=search, tipo_nomina=tipo_nomina, estado=estado) }}">Siguiente</a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

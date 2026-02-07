@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Resultados de Provisión</title>
+    <link rel="icon" type="image/png" href="/favicon.ico?v={{ range(1, 9999) | random }}">
+    <link rel="shortcut icon" href="/favicon.ico?v={{ range(1, 9999) | random }}">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <style>
+        .sticky-top {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            backdrop-filter: blur(10px);
+        }
+        
+        .table-responsive {
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .card {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            border: none;
+            margin-bottom: 20px;
+            border-radius: 10px;
+        }
+        
+        .card-header {
+            border-radius: 10px 10px 0 0 !important;
+        }
+        
+        .badge {
+            font-size: 0.75em;
+            padding: 0.5em 0.75em;
+        }
+        
+        .btn {
+            margin: 0 2px;
+        }
+        
+        .export-btn:hover, .pdf-btn:hover {
+            transform: translateY(-2px);
+            transition: transform 0.2s;
+        }
+        
+        @media (max-width: 768px) {
+            .card-footer .d-flex {
+                flex-direction: column;
+                gap: 10px;
+            }
+            
+            .btn-group {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        /* Estilos para impresión */
+        @media print {
+            .no-print, .card-footer, .btn, .alert, .navbar {
+                display: none !important;
+            }
+            
+            .card {
+                border: 1px solid #000 !important;
+                box-shadow: none !important;
+                page-break-inside: avoid;
+            }
+            
+            .card-header {
+                background-color: #f8f9fa !important;
+                color: #000 !important;
+            }
+            
+            body {
+                font-size: 12px;
+                margin: 0;
+                padding: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Navbar Simple -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary no-print">
+        <div class="container">
+            <a class="navbar-brand" href="#">Sistema de Provisión</a>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Mensajes Flash -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Validación de datos -->
+        {% if session.get('asignados') is none or session.get('invalidados') is none %}
+        <div class="alert alert-danger">
+            <h4>❌ Error: Datos de provisión no disponibles</h4>
+            <p>Los datos de la provisión no se cargaron correctamente.</p>
+            <a href="{{ url_for('provision.make_provision') }}" class="btn btn-primary">Volver a Provisión</a>
+           
+        </div>
+        {% else %}
+        
+        <!-- Encabezado -->
+        <div class="row mb-4">
+            <div class="col-12 text-center">
+                <h1 class="text-primary">Resultados de Provisión</h1>
+                <p class="lead">
+                    <strong>Nómina:</strong> 
+                    {% if session['nomina'] == '1' %}Semanal{% else %}Quincenal{% endif %} 
+                    | <strong>Semana #{{ session['semana'] }}</strong> 
+                    | <strong>Combo #{{ session['semProv'] }}</strong>
+                </p>
+                <p class="text-muted">{{ session['fecha'] }}</p>
+            </div>
+        </div>
+
+        <!-- Resumen Estadístico -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card text-white bg-primary">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Total Asignados</h5>
+                        <h2 class="card-text">{{ session['asignados'] | length }}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-warning">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Total Invalidados</h5>
+                        <h2 class="card-text">{{ session['invalidados'] | length }}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card text-white bg-info">
+                    <div class="card-body text-center">
+                        <h5 class="card-title">Total General</h5>
+                        <h2 class="card-text">{{ (session['asignados'] | length) + (session['invalidados'] | length) }}</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Productos del Combo -->
+        {% if session.get('combo') %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-secondary text-white">
+                        <h5 class="mb-0">📦 Productos del Combo de Provisión</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            {% for producto, cantidad in session['combo'] %}
+                            <div class="col-md-3 mb-2">
+                                <span class="badge bg-primary p-2">{{ producto }}: {{ cantidad }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Sección de Empleados Asignados -->
+        <div class="row mb-5">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">✅ Empleados Asignados para Entrega de Beneficio</h5>
+                        <span class="badge bg-light text-dark">{{ session['asignados'] | length }} empleados</span>
+                    </div>
+                    <div class="card-body p-0">
+                        {% if session['asignados'] | length > 0 %}
+                        <!-- TABLA DE ASIGNADOS -->
+                        <div class="row">
+                            <div class="col-12">
+                                <div class="card shadow-lg mb-4 bg-transparent border-0">
+                                    <div class="card-header bg-success text-white">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <h4 class="mb-0"><i class="fas fa-check-circle me-2"></i>Personal Asignado</h4>
+                                            <div class="input-group w-50">
+                                                <span class="input-group-text bg-white bg-opacity-75 border-0"><i class="fas fa-search"></i></span>
+                                                <input type="text" id="searchAsignados" class="form-control border-0" placeholder="Buscar en asignados...">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="card-body bg-white bg-opacity-25 p-0">
+                                        <div id="dvContainer1" class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                            <table class="table table-hover mb-0" id="tableAsignados">
+                                                <thead class="table-dark sticky-top">
+                                                    <tr>
+                                                        <th>Cédula</th>
+                                                        <th>Nombre</th>
+                                                        <th>Apellido</th>
+                                                        <th>Departamento</th>
+                                                        <th>ID Empleado</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {% if session.get('asignados') %}
+                                                    {% for row in session.get('asignados') %}
+                                                    <tr>
+                                                        <td class="fw-bold">{{ row.cedula }}</td>
+                                                        <td>{{ row.nombre }}</td>
+                                                        <td>{{ row.apellido }}</td>
+                                                        <td>{{ row.departamento }}</td>
+                                                        <td class="badge bg-primary mt-2">{{ row.id_empleado }}</td>
+                                                    </tr>
+                                                    {% endfor %}
+                                                    {% endif %}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="text-center p-4">
+                            <h5 class="text-muted">No hay empleados asignados</h5>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if session['asignados'] | length > 0 %}
+                    <div class="card-footer no-print">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <strong>Exportar a Excel:</strong>
+                                <div class="btn-group ms-2" role="group">
+                                    <!--<a href="{{ url_for('provision.exportar_empleados', tipo_empleado='asignados', formato='xlsx') }}" 
+                                       class="btn btn-success btn-sm export-btn" 
+                                       data-format="csv" 
+                                       data-type="asignados">
+                                        📄 CSV
+                                    </a> -->
+                                    <a href="{{ url_for('provision.exportar_empleados', tipo_empleado='asignados', formato='csv') }}" 
+                                       class="btn btn-info btn-sm export-btn" 
+                                       data-format="xlsx" 
+                                       data-type="asignados">
+                                        📊 Excel
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-danger" id="btnPrint1" onclick="imprimirTabla('asignados')">
+                                    🖨️ Imprimir
+                                </button>
+                                <button type="button" class="btn btn-dark pdf-btn" onclick="exportToPDF('dvContainer1', 'empleados_asignados')">
+                                    📑 PDF
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección de Empleados Invalidados -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header bg-warning text-dark d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">⚠️ Empleados que No Cumplieron Requisitos</h5>
+                        <span class="badge bg-light text-dark">{{ session['invalidados'] | length }} empleados</span>
+                    </div>
+                    <div class="card-body p-0">
+                        {% if session['invalidados'] | length > 0 %}
+                        <div id="dvContainer2" class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                            <table class="table table-bordered table-hover table-striped mb-0">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Cédula</th>
+                                        <th>Nombre</th>
+                                        <th>Apellido</th>
+                                        <th>Departamento</th>
+                                        <th>ID Empleado</th>
+                                        <th>Estatus</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for empleado in session['invalidados'] %}
+                                    <tr>
+                                        <td>{{ loop.index }}</td>
+                                        <td>{{ empleado.cedula }}</td>
+                                        <td>{{ empleado.nombre }}</td>
+                                        <td>{{ empleado.apellido }}</td>
+                                        <td>{{ empleado.departamento }}</td>
+                                        <td>{{ empleado.id_empleado }}</td>
+                                        <td><span class="badge bg-danger">NO CUMPLE REQUISITOS</span></td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <div class="text-center p-4">
+                            <h5 class="text-success">✅ Todos los empleados cumplen los requisitos</h5>
+                            <p class="text-muted">No hay empleados invalidados</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% if session['invalidados'] | length > 0 %}
+                    <div class="card-footer no-print">
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div>
+                                <strong>Exportar a Excel:</strong>
+                                <div class="btn-group ms-2" role="group">
+                                    <!--<a href="{{ url_for('provision.exportar_empleados', tipo_empleado='invalidados', formato='xlsx') }}" 
+                                       class="btn btn-success btn-sm export-btn" 
+                                       data-format="xlsx" 
+                                       data-type="invalidados">
+                                        📊 Excel
+                                    </a> -->
+                                    <a href="{{ url_for('provision.exportar_empleados', tipo_empleado='invalidados', formato='csv') }}" 
+                                       class="btn btn-info btn-sm export-btn" 
+                                       data-format="csv" 
+                                       data-type="invalidados">
+                                        📊 Excel
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-danger" id="btnPrint2" onclick="imprimirTabla('invalidados')">
+                                    🖨️ Imprimir
+                                </button>
+                                <button type="button" class="btn btn-dark pdf-btn" onclick="exportToPDF('dvContainer2', 'empleados_invalidados')">
+                                    📑 PDF
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Botones de Navegación -->
+        <div class="row mt-4 no-print">
+            <div class="col-12 text-center">
+                <a href="{{ url_for('provision.make_provision') }}" class="btn btn-primary btn-lg">
+                    🔄 Realizar Nueva Provisión
+                </a>
+                
+                <a href="/main" class="btn btn-outline-dark btn-lg">
+                    🏠 Ir al Inicio
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Incluir main.js para tener acceso a initTableSearch -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script type="text/javascript">
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Página de resultados lista');
+            // Cargar script de búsqueda si está disponible
+            if (typeof initTableSearch === 'function') {
+                initTableSearch('searchAsignados', 'tableAsignados');
+                initTableSearch('searchInvalidados', 'tableInvalidados');
+            }
+        });
+        $(document).ready(function() {
+            // Feedback visual para botones de exportación
+            $('.export-btn').on('click', function(e) {
+                var $btn = $(this);
+                var originalText = $btn.html();
+                $btn.html('⏳ Generando...').prop('disabled', true);
+                
+                setTimeout(function() {
+                    $btn.html(originalText).prop('disabled', false);
+                }, 3000);
+            });
+
+            // Feedback para botones PDF
+            $('.pdf-btn').on('click', function(e) {
+                var $btn = $(this);
+                var originalText = $btn.html();
+                $btn.html('⏳ Creando PDF...').prop('disabled', true);
+                
+                setTimeout(function() {
+                    $btn.html(originalText).prop('disabled', false);
+                }, 4000);
+            });
+        });
+
+        // Función para imprimir específica
+        function imprimirTabla(tipo) {
+            window.print();
+        }
+
+        // Función para exportar a PDF - MEJORADA
+        function exportToPDF(containerId, filename) {
+            const { jsPDF } = window.jspdf;
+            
+            // Crear un nuevo PDF
+            const doc = new jsPDF('p', 'mm', 'a4');
+            const element = document.getElementById(containerId);
+            
+            // Agregar título
+            doc.setFontSize(16);
+            doc.text('Reporte de ' + filename.replace('_', ' ').toUpperCase(), 105, 15, { align: 'center' });
+            
+            // Agregar fecha
+            doc.setFontSize(10);
+            doc.text('Generado: ' + new Date().toLocaleDateString(), 105, 22, { align: 'center' });
+            doc.text('Hora: ' + new Date().toLocaleTimeString(), 105, 28, { align: 'center' });
+            
+            // Usar html2canvas para capturar el contenido
+            html2canvas(element, {
+                scale: 2, // Mejor calidad
+                useCORS: true,
+                logging: false
+            }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const imgWidth = 190;
+                const imgHeight = canvas.height * imgWidth / canvas.width;
+                
+                doc.addImage(imgData, 'PNG', 10, 35, imgWidth, imgHeight);
+                doc.save(filename + '.pdf');
+            }).catch(error => {
+                console.error('Error generando PDF:', error);
+                alert('Error al generar el PDF. Por favor, intente nuevamente.');
+            });
+        }
+
+        // Función simple para imprimir toda la página
+        function imprimirPagina() {
+            window.print();
+        }
+    </script>
+</body>
+</html>

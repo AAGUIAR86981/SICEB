@@ -1,0 +1,373 @@
+{% extends "layout.html" %}
+
+{% block title %}Administración{% endblock %}
+
+{% block extra_css %}
+<style>
+    .card {
+        border-radius: 10px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        margin-bottom: 20px;
+        border: none;
+    }
+
+    .card-header {
+        border-radius: 10px 10px 0 0 !important;
+        font-weight: 600;
+    }
+
+    .table th {
+        background-color: #f1f5f9;
+        color: #334155;
+    }
+
+    .btn-action {
+        border-radius: 6px;
+        padding: 0.35rem 0.75rem;
+    }
+
+    .section-title {
+        color: #2c3e50;
+        border-bottom: 2px solid #3498db;
+        padding-bottom: 10px;
+        margin-bottom: 20px;
+    }
+
+    .stats-box {
+        background: linear-gradient(135deg, #3498db, #2c3e50);
+        color: white;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 20px;
+    }
+
+    .stats-box-danger {
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
+    }
+
+    .stats-box-success {
+        background: linear-gradient(135deg, #27ae60, #219653);
+    }
+
+    .stats-box-warning {
+        background: linear-gradient(135deg, #f39c12, #e67e22);
+    }
+
+    .badge-creacion {
+        background-color: #17a2b8 !important;
+    }
+
+    .badge-inicio-sesion {
+        background-color: #28a745 !important;
+    }
+
+    .badge-fallo {
+        background-color: #dc3545 !important;
+    }
+
+    .btn-gestion {
+        padding: 12px 24px;
+        font-size: 1.1rem;
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+
+    .btn-gestion:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <h1 class="text-center mb-4 section-title">
+                <i class="fas fa-cogs me-2"></i>Panel de Administración
+            </h1>
+
+            <!-- Estadísticas rápidas -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="stats-box text-center">
+                        <h5><i class="fas fa-sign-in-alt me-2"></i>Inicios de Sesión</h5>
+                        <h3>{{ userlogs|length if userlogs else 0 }}</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-box stats-box-danger text-center">
+                        <h5><i class="fas fa-tasks me-2"></i>Total Actividades</h5>
+                        <h3>{{ user_activities|length if user_activities else 0 }}</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-box stats-box-success text-center">
+                        <h5><i class="fas fa-users me-2"></i>Usuarios Registrados</h5>
+                        <h3>{{ user_count if user_count else 'N/A' }}</h3>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="stats-box stats-box-warning text-center">
+                        <h5><i class="fas fa-user-plus me-2"></i>Creaciones</h5>
+                        <h3>{{ creaciones_count if creaciones_count else 'N/A' }}</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botones de Gestión (AGREGADO) -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="d-flex justify-content-center gap-4">
+                        <a href="{{ url_for('admin.auditoria') }}" class="btn btn-primary btn-gestion">
+                            <i class="fas fa-eye me-2"></i> Auditoría Detallada
+                        </a>
+
+                        <a href="{{ url_for('roles.gestion_roles') }}" class="btn btn-dark btn-gestion">
+                            <i class="fas fa-user-shield me-2"></i> Gestionar Roles
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Histórico de Inicios de Sesión -->
+                <div class="col-lg-8">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-history me-2"></i>Histórico de Inicios de Sesión
+                            </h5>
+                        </div>
+                        <div id="dvContainer1" class="card-body table-responsive"
+                            style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-hover table-striped">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Usuario</th>
+                                        <th>ID Usuario</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if userlogs %}
+                                    {% for log in userlogs %}
+                                    <tr>
+                                        <td>{{ log[0].strftime('%d/%m/%Y %H:%M:%S') if log[0] else 'N/A' }}</td>
+                                        <td>{{ log[1] }}</td>
+                                        <td>{{ log[2] }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="3" class="text-center">No hay registros de inicio de sesión</td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn btn-sm btn-outline-primary" id="btnPrint1">
+                                <i class="fas fa-print me-1"></i>Imprimir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulario de Registro -->
+                <div class="col-lg-4">
+                    <div class="card">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-user-plus me-2"></i>Registrar Nuevo Usuario
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <form action="/admin" method="post">
+                                <input type="hidden" name="action" value="addUser">
+                                <div class="mb-3">
+                                    <label for="username" class="form-label">Nombre de Usuario:</label>
+                                    <input type="text" class="form-control" id="username" name="username"
+                                        placeholder="Nombre de Usuario" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Correo Electrónico:</label>
+                                    <input type="email" class="form-control" id="email" name="email"
+                                        placeholder="correo@ejemplo.com" required>
+                                </div>
+                                <div class="row mb-3">
+                                    <div class="col-md-6">
+                                        <label for="name" class="form-label">Nombre:</label>
+                                        <input type="text" class="form-control" id="name" name="name"
+                                            placeholder="Nombre" required>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label for="lastname" class="form-label">Apellido:</label>
+                                        <input type="text" class="form-control" id="lastname" name="lastname"
+                                            placeholder="Apellido" required>
+                                    </div>
+                                </div>
+
+                                <!-- Botones de Gestión (también aquí si quieres) -->
+                                <div class="mb-3">
+                                    <div class="d-grid gap-2">
+
+                                        <a href="{{ url_for('roles.gestion_roles') }}" class="btn btn-outline-dark">
+                                            <i class="fas fa-user-shield me-1"></i> Gestionar Roles
+                                        </a>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Configuración del Usuario</label>
+
+                                    <!-- Mantener compatibilidad con isAdmin -->
+                                    <div class="form-check mb-2">
+                                        <input class="form-check-input" type="checkbox" id="isAdmin" name="isAdmin"
+                                            value="1">
+                                        <label class="form-check-label fw-semibold" for="isAdmin">
+                                            <i class="fas fa-crown text-warning me-1"></i> Administrador del Sistema
+                                        </label>
+                                        <small class="form-text text-muted d-block ms-4">
+                                            Tendrá acceso completo a todas las funciones.
+                                        </small>
+                                    </div>
+
+                                    <!-- Selección de roles (opcional por ahora) -->
+                                    <div class="border rounded p-3 mt-2">
+                                        <label class="form-label mb-2">Roles Asignados:</label>
+                                        <div class="form-check">
+                                            <input class="form-check-input" type="checkbox" name="roles[]" value="2"
+                                                id="rol_user" checked>
+                                            <label class="form-check-label" for="rol_user">
+                                                <span class="badge bg-info me-2">User</span> Usuario Estándar
+                                            </label>
+                                            <small class="form-text text-muted d-block ms-4">
+                                                Permisos básicos para operar en el sistema.
+                                            </small>
+                                        </div>
+
+                                        <!-- Opciones adicionales que puedes habilitar después -->
+                                        <div class="form-check mt-2">
+                                            <input class="form-check-input" type="checkbox" name="roles[]" value="3"
+                                                id="rol_viewer">
+                                            <label class="form-check-label" for="rol_viewer">
+                                                <span class="badge bg-secondary me-2">Viewer</span> Solo Lectura
+                                            </label>
+                                            <small class="form-text text-muted d-block ms-4">
+                                                Solo puede ver información, no modificar.
+                                            </small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <button class="btn btn-primary btn-action" type="submit" name="submitF">
+                                        <i class="fas fa-user-plus me-1"></i>Registrar Usuario
+                                    </button>
+                                    <button class="btn btn-outline-secondary btn-action" type="reset" name="resetF">
+                                        <i class="fas fa-eraser me-1"></i>Limpiar Campos
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actividades de Usuarios -->
+            <div class="row mt-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">
+                                <i class="fas fa-tasks me-2"></i>Actividades de Usuarios
+                            </h5>
+                        </div>
+                        <div id="dvContainer3" class="card-body table-responsive"
+                            style="max-height: 400px; overflow-y: auto;">
+                            <table class="table table-hover table-striped">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Fecha</th>
+                                        <th>Usuario</th>
+                                        <th>ID Usuario</th>
+                                        <th>Tipo de Actividad</th>
+                                        <th>Detalles</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% if user_activities %}
+                                    {% for actividad in user_activities %}
+                                    <tr>
+                                        <td>{{ actividad[0].strftime('%d/%m/%Y %H:%M:%S') if actividad[0] else 'N/A' }}
+                                        </td>
+                                        <td>{{ actividad[1] }}</td>
+                                        <td>{{ actividad[2] }}</td>
+
+                                        <td>
+                                            <span class="badge 
+                                                        {% if actividad[3] == 'Inicio de sesión' %}badge-inicio-sesion
+                                                        {% elif 'fallido' in actividad[3] %}badge-fallo
+                                                        {% elif 'Creación' in actividad[3] %}badge-creacion
+                                                        {% else %}bg-info{% endif %}">
+                                                {{ actividad[3] }}
+                                            </span>
+                                        </td>
+                                        <td>{{ actividad[4] }}</td>
+                                    </tr>
+                                    {% endfor %}
+                                    {% else %}
+                                    <tr>
+                                        <td colspan="5" class="text-center">No hay actividades registradas</td>
+                                    </tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn btn-sm btn-outline-primary" id="btnPrint3">
+                                <i class="fas fa-print me-1"></i>Imprimir
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script>
+    $(document).ready(function () {
+        // Función para imprimir la tabla de inicios de sesión
+        $("#btnPrint1").click(function () {
+            var divContents = $("#dvContainer1").html();
+            var printWindow = window.open('', '', 'height=600,width=800');
+            printWindow.document.write('<html><head><title>Histórico de Inicios de Sesión</title>');
+            printWindow.document.write('<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">');
+            printWindow.document.write('</head><body>');
+            printWindow.document.write('<div class="container mt-4"><h2 class="text-center mb-4">Histórico de Inicios de Sesión</h2>');
+            printWindow.document.write(divContents);
+            printWindow.document.write('</div></body></html>');
+            printWindow.document.close();
+            printWindow.print();
+        });
+
+        // Función para imprimir la tabla de actividades
+        $("#btnPrint3").click(function () {
+            var divContents = $("#dvContainer3").html();
+            var printWindow = window.open('', '', 'height=600,width=800');
+            printWindow.document.write('<html><head><title>Actividades de Usuarios</title>');
+            printWindow.document.write('<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">');
+            printWindow.document.write('</head><body>');
+            printWindow.document.write('<div class="container mt-4"><h2 class="text-center mb-4">Actividades de Usuarios</h2>');
+            printWindow.document.write(divContents);
+            printWindow.document.write('</div></body></html>');
+            printWindow.document.close();
+            printWindow.print();
+        });
+    });
+</script>
+{% endblock %}

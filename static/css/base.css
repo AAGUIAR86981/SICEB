@@ -1,0 +1,25 @@
+/* base.css */
+.legend-1 {
+    color: #f1c40f;
+    font-weight: bold;
+    margin: 15px 0;
+    font-size: 1.2em;
+}
+
+/* Estilos para el contenido de los bloques */
+.content-section {
+    padding: 20px;
+    background: white;
+    margin: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Utilidades */
+.text-center {
+    text-align: center;
+}
+
+.text-uppercase {
+    text-transform: uppercase;
+}

@@ -1,0 +1,162 @@
+{% extends "layout.html" %}
+
+{% block title %}{{ 'Editar' if combo else 'Nuevo' }} Combo{% endblock %}
+
+{% block content %}
+<div class="main-container">
+    <div class="welcome-header mb-4">
+        <h1 class="mb-0">{{ 'Editar' if combo else 'Crear Nuevo' }} Combo</h1>
+        <p class="lead mb-0">Define los productos y cantidades que componen este paquete</p>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-10 mx-auto">
+            <div class="card bg-white bg-opacity-75 border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <form action="{{ url_for('combos.edit_combo', combo_id=combo.id) if combo else url_for('combos.create_combo') }}" method="POST" id="comboForm">
+                        <div class="row mb-4">
+                            <div class="col-md-8">
+                                <label class="form-label fw-bold">Nombre del Combo</label>
+                                <input type="text" name="nombre" class="form-control" value="{{ combo.nombre if combo else '' }}" required placeholder="Ej: Combo Básico Semanal">
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Estado</label>
+                                <div class="form-check form-switch mt-2">
+                                    <input class="form-check-input" type="checkbox" name="activo" id="activo" {{ 'checked' if not combo or combo.activo else '' }}>
+                                    <label class="form-check-label" for="activo">Activo para provisiones</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Descripción (Opcional)</label>
+                            <textarea name="descripcion" class="form-control" rows="2" placeholder="Breve descripción del contenido...">{{ combo.descripcion if combo else '' }}</textarea>
+                        </div>
+
+                        <hr>
+
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5 class="mb-0"><i class="fas fa-list me-2"></i>Productos incluidos</h5>
+                            <button type="button" class="btn btn-sm btn-outline-success" id="btn-add-product">
+                                <i class="fas fa-plus me-1"></i> Agregar Producto
+                            </button>
+                        </div>
+
+                        <div id="products-container" class="mb-4">
+                            {% if combo and combo.items %}
+                                {% for item in combo['items'] %}
+                                <div class="product-row row g-3 mb-3 animate__animated animate__fadeIn">
+                                    <div class="col-md-7">
+                                        <select name="producto_{{ loop.index }}" class="form-select" required>
+                                            <option value="">Seleccione un producto...</option>
+                                            {% for prod in catalog %}
+                                            <option value="{{ prod.id }}" {{ 'selected' if prod.id == item.producto_id else '' }}>{{ prod.nombre }} ({{ prod.unidad }})</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="input-group">
+                                            <input type="number" name="cantidad_{{ loop.index }}" class="form-control" value="{{ item.cantidad }}" min="1" required>
+                                            <span class="input-group-text">Cant.</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2 text-end">
+                                        <button type="button" class="btn btn-outline-danger btn-remove-row">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            {% else %}
+                                <!-- Fila inicial vacía si es nuevo combo -->
+                                <div class="product-row row g-3 mb-3 animate__animated animate__fadeIn">
+                                    <div class="col-md-7">
+                                        <select name="producto_1" class="form-select" required>
+                                            <option value="">Seleccione un producto...</option>
+                                            {% for prod in catalog %}
+                                            <option value="{{ prod.id }}">{{ prod.nombre }} ({{ prod.unidad }})</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="input-group">
+                                            <input type="number" name="cantidad_1" class="form-control" value="1" min="1" required>
+                                            <span class="input-group-text">Cant.</span>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2 text-end">
+                                        <button type="button" class="btn btn-outline-danger btn-remove-row">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="d-flex justify-content-end gap-2">
+                            <a href="{{ url_for('combos.list_combos') }}" class="btn btn-light border">Cancelar</a>
+                            <button type="submit" class="btn btn-primary px-4">
+                                <i class="fas fa-save me-2"></i> Guardar Combo
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Template para nuevas filas (oculto) -->
+<template id="row-template">
+    <div class="product-row row g-3 mb-3 animate__animated animate__fadeIn">
+        <div class="col-md-7">
+            <select name="producto_INDEX" class="form-select" required>
+                <option value="">Seleccione un producto...</option>
+                {% for prod in catalog %}
+                <option value="{{ prod.id }}">{{ prod.nombre }} ({{ prod.unidad }})</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <div class="input-group">
+                <input type="number" name="cantidad_INDEX" class="form-control" value="1" min="1" required>
+                <span class="input-group-text">Cant.</span>
+            </div>
+        </div>
+        <div class="col-md-2 text-end">
+            <button type="button" class="btn btn-outline-danger btn-remove-row">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    </div>
+</template>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const container = document.getElementById('products-container');
+        const btnAdd = document.getElementById('btn-add-product');
+        const template = document.getElementById('row-template');
+        let index = container.querySelectorAll('.product-row').length + 1;
+
+        btnAdd.addEventListener('click', function() {
+            const clone = template.content.cloneNode(true);
+            const html = clone.firstElementChild.outerHTML.replace(/INDEX/g, index);
+            container.insertAdjacentHTML('beforeend', html);
+            index++;
+        });
+
+        container.addEventListener('click', function(e) {
+            if (e.target.closest('.btn-remove-row')) {
+                const rows = container.querySelectorAll('.product-row');
+                if (rows.length > 1) {
+                    e.target.closest('.product-row').remove();
+                } else {
+                    alert('Un combo debe tener al menos un producto.');
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

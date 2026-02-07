@@ -1,0 +1,276 @@
+<!-- templates/gestion_roles.html -->
+{% extends "layout.html" %}
+
+{% block title %}Gestión de Roles{% endblock %}
+
+{% block extra_css %}
+<style>
+    .role-badge {
+        font-size: 0.85em;
+        padding: 0.3em 0.7em;
+    }
+
+    .user-row:hover {
+        background-color: #f8f9fa;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Encabezado -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1>
+                    <i class="fas fa-user-shield me-2"></i>Gestión de Roles
+                </h1>
+                <a href="{{ url_for('admin.admin') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-1"></i>Volver al Panel
+                </a>
+            </div>
+
+            <!-- Tarjetas informativas -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body text-center">
+                            <h5><i class="fas fa-users me-2"></i>Total Usuarios</h5>
+                            <h3>{{ usuarios|length }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-info text-white">
+                        <div class="card-body text-center">
+                            <h5><i class="fas fa-user-tag me-2"></i>Roles Disponibles</h5>
+                            <h3>{{ roles|length }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <h5><i class="fas fa-user me-2"></i>Tu Perfil</h5>
+                            <h5>
+                                {% if session.isAdmin == 1 %}
+                                Administrador
+                                {% else %}
+                                Usuario
+                                {% endif %}
+                            </h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabla de Usuarios -->
+            <div class="card mb-4">
+                <div class="card-header bg-dark text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-users me-2"></i>Usuarios del Sistema
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Usuario</th>
+                                    <!--<th>Nombre</th>-->
+                                    <th>Email</th>
+                                    <th>Admin</th>
+                                    <th>Estado</th>
+                                    <th>Roles</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for usuario in usuarios %}
+                                <tr class="user-row {% if usuario.id == session.id %}table-info{% endif %}">
+                                    <td>{{ usuario.id }}</td>
+                                    <td>
+                                        <strong>{{ usuario.username }}</strong>
+                                        {% if usuario.id == session.id %}
+                                        <span class="badge bg-success ms-1">Tú</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ usuario.email }}</td>
+                                    <td>
+                                        <span
+                                            class="badge {% if usuario.isAdmin == 1 %}bg-warning{% else %}bg-secondary{% endif %}">
+                                            {{ "Sí" if usuario.isAdmin == 1 else "No" }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if usuario.activo == 1 %}
+                                        <span class="badge bg-success">Activo</span>
+                                        {% else %}
+                                        <span class="badge bg-danger">Inactivo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if usuario.roles %}
+                                        {% for rol in usuario.roles %}
+                                        <span class="badge bg-info role-badge me-1 mb-1">{{ rol }}</span>
+                                        {% endfor %}
+                                        {% else %}
+                                        <span class="badge bg-light text-dark">Sin roles</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <button type="button" class="btn btn-sm btn-outline-primary edit-user"
+                                                data-id="{{ usuario.id }}" data-username="{{ usuario.username }}"
+                                                data-isadmin="{{ usuario.isAdmin }}"
+                                                data-roles="{{ usuario.roles|join(',') }}">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+
+                                            <a href="{{ url_for('roles.toggle_user', user_id=usuario.id) }}"
+                                                class="btn btn-sm {% if usuario.activo == 1 %}btn-outline-danger{% else %}btn-outline-success{% endif %}"
+                                                title="{{ 'Desactivar' if usuario.activo == 1 else 'Activar' }}">
+                                                <i
+                                                    class="fas {% if usuario.activo == 1 %}fa-user-slash{% else %}fa-user-check{% endif %}"></i>
+                                            </a>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de Roles Disponibles -->
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">
+                        <i class="fas fa-list me-2"></i>Roles Disponibles
+                    </h5>
+                </div>
+                <div class="card-body">
+                    {% if roles %}
+                    <div class="row">
+                        {% for rol in roles %}
+                        <div class="col-md-3 mb-3">
+                            <div class="card h-100">
+                                <div class="card-header py-2">
+                                    <h6 class="mb-0">
+                                        <i class="fas fa-user-tag me-2"></i>{{ rol[1]|title }}
+                                    </h6>
+                                </div>
+                                <div class="card-body py-3">
+                                    <p class="card-text small">{{ rol[2] if rol[2] else 'Sin descripción' }}</p>
+                                    <small class="text-muted">ID: {{ rol[0] }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="alert alert-warning text-center">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        No hay roles configurados en el sistema.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para Editar Usuario -->
+<div class="modal fade" id="editUserModal" tabindex="-1" aria-labelledby="editUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form id="editUserForm" method="POST" action="">
+                <div class="modal-header bg-primary text-white">
+                    <h5 class="modal-title" id="editUserModalLabel">
+                        <i class="fas fa-user-edit me-2"></i>Configurar Usuario: <span id="modalUsername"></span>
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
+                        aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-12 mb-4">
+                            <div class="form-check form-switch p-3 bg-light rounded border">
+                                <input class="form-check-input" type="checkbox" id="modalIsAdmin" name="isAdmin">
+                                <label class="form-check-label fw-bold ms-2" for="modalIsAdmin">
+                                    Privilegios de Administrador (Acceso Total)
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <h6 class="border-bottom pb-2 mb-3">Asignar Roles del Sistema</h6>
+                            <div class="row">
+                                {% for rol in roles %}
+                                <div class="col-md-6 mb-2">
+                                    <div class="form-check border p-2 rounded">
+                                        <input class="form-check-input role-checkbox" type="checkbox" name="roles[]"
+                                            value="{{ rol[0] }}" id="role_{{ rol[0] }}">
+                                        <label class="form-check-label" for="role_{{ rol[0] }}">
+                                            <strong>{{ rol[1]|title }}</strong>
+                                            <small class="d-block text-muted">{{ rol[2] }}</small>
+                                        </label>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save me-1"></i>Guardar Cambios
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const editButtons = document.querySelectorAll('.edit-user');
+        const editModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+        const editForm = document.getElementById('editUserForm');
+        const modalUsername = document.getElementById('modalUsername');
+        const modalIsAdmin = document.getElementById('modalIsAdmin');
+        const roleCheckboxes = document.querySelectorAll('.role-checkbox');
+
+        editButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                const userId = this.getAttribute('data-id');
+                const username = this.getAttribute('data-username');
+                const isAdmin = this.getAttribute('data-isadmin') === '1';
+                const userRoles = this.getAttribute('data-roles').split(',');
+
+                // Configurar formulario
+                editForm.action = `/admin/usuarios/update_config/${userId}`;
+                modalUsername.textContent = username;
+                modalIsAdmin.checked = isAdmin;
+
+                // Limpiar y marcar checkboxes de roles
+                roleCheckboxes.forEach(cb => {
+                    cb.checked = false;
+                    // Marcar si el nombre del rol está en la lista (basado en el texto para coincidir con el data-roles)
+                    const roleName = cb.nextElementSibling.querySelector('strong').textContent.toLowerCase();
+                    if (userRoles.some(ur => ur.toLowerCase() === roleName)) {
+                        cb.checked = true;
+                    }
+                });
+
+                editModal.show();
+            });
+        });
+    });
+</script>
+{% endblock %}

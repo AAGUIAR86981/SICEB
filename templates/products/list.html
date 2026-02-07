@@ -1,0 +1,178 @@
+{% extends "layout.html" %}
+
+{% block title %}Gestión de Productos{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2><i class="fas fa-box"></i> Gestión de Productos</h2>
+                {% if check_permission('all') or session.get('isAdmin') == 1 %}
+                <a href="{{ url_for('products.create_product') }}" class="btn btn-primary">
+                    <i class="fas fa-plus"></i> Nuevo Producto
+                </a>
+                {% endif %}
+            </div>
+
+            <!-- Estadísticas -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-check-circle"></i> Productos Activos</h5>
+                            <h2>{{ total_activos }}</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-times-circle"></i> Productos Inactivos</h5>
+                            <h2>{{ total_inactivos }}</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-list"></i> Mostrando</h5>
+                            <h2>{{ total_productos }}</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filtros y Búsqueda -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <form method="GET" action="{{ url_for('products.list_products') }}" class="row g-3">
+                        <div class="col-md-6">
+                            <label for="search" class="form-label">Buscar</label>
+                            <input type="text" class="form-control" id="search" name="search"
+                                placeholder="Buscar por nombre o categoría..." value="{{ search_query }}">
+                        </div>
+                        <div class="col-md-4">
+                            <label for="status" class="form-label">Estado</label>
+                            <select class="form-select" id="status" name="status">
+                                <option value="active" {% if filter_status=='active' %}selected{% endif %}>Solo Activos
+                                </option>
+                                <option value="inactive" {% if filter_status=='inactive' %}selected{% endif %}>Solo
+                                    Inactivos</option>
+                                <option value="all" {% if filter_status=='all' %}selected{% endif %}>Todos</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary w-100">
+                                <i class="fas fa-search"></i> Buscar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Tabla de Productos -->
+            <div class="card">
+                <div class="card-body">
+                    {% if products %}
+                    <div class="table-responsive">
+                        <table class="table table-striped table-hover">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nombre</th>
+                                    <th>Categoría</th>
+                                    <th>Estado</th>
+                                    <th>Fecha Creación</th>
+                                    <th class="text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for product in products %}
+                                <tr id="product-row-{{ product.id }}">
+                                    <td>{{ product.id }}</td>
+                                    <td><strong>{{ product.nombre }}</strong></td>
+                                    <td>{{ product.categoria or '-' }}</td>
+                                    <td>
+                                        {% if product.activo %}
+                                        <span class="badge bg-success">Activo</span>
+                                        {% else %}
+                                        <span class="badge bg-secondary">Inactivo</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ product.created_at.strftime('%d/%m/%Y') if product.created_at else '-' }}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if check_permission('all') or session.get('isAdmin') == 1 %}
+                                        <!-- Editar -->
+                                        <a href="{{ url_for('products.edit_product', product_id=product.id) }}"
+                                            class="btn btn-sm btn-warning" title="Editar">
+                                            <i class="fas fa-edit"></i>
+                                        </a>
+
+                                        <!-- Activar/Desactivar -->
+                                        <button
+                                            class="btn btn-sm {% if product.activo %}btn-danger{% else %}btn-success{% endif %} toggle-status-btn"
+                                            data-product-id="{{ product.id }}" data-product-name="{{ product.nombre }}"
+                                            data-current-status="{{ 'activo' if product.activo else 'inactivo' }}"
+                                            title="{% if product.activo %}Desactivar{% else %}Activar{% endif %}">
+                                            <i
+                                                class="fas fa-{% if product.activo %}times{% else %}check{% endif %}-circle"></i>
+                                        </button>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% else %}
+                    <div class="alert alert-info text-center">
+                        <i class="fas fa-info-circle"></i> No se encontraron productos con los filtros seleccionados.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Script para activar/desactivar productos -->
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const toggleButtons = document.querySelectorAll('.toggle-status-btn');
+
+        toggleButtons.forEach(button => {
+            button.addEventListener('click', function () {
+                const productId = this.dataset.productId;
+                const productName = this.dataset.productName;
+                const currentStatus = this.dataset.currentStatus;
+                const newStatus = currentStatus === 'activo' ? 'inactivo' : 'activo';
+
+                if (confirm(`¿Está seguro de ${newStatus === 'activo' ? 'activar' : 'desactivar'} el producto "${productName}"?`)) {
+                    fetch(`/products/toggle/${productId}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.success) {
+                                // Recargar la página para reflejar cambios
+                                location.reload();
+                            } else {
+                                alert('Error: ' + data.message);
+                            }
+                        })
+                        .catch(error => {
+                            alert('Error al cambiar estado del producto');
+                            console.error('Error:', error);
+                        });
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

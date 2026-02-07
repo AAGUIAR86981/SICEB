@@ -1,0 +1,27 @@
+﻿{%extends 'layout.html'%}
+{%block title%}Olvido Contraseña{%endblock%}
+{%block content%}
+<div class="row">
+    <h1>Coloque su usuario<br/> y correo electronico</h1>
+    <div class="col">
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <ul class=flashes>
+            {% for message in messages %}
+            <li>{{ message }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+        {% endwith %}
+        <form action="/olvido" method="post">
+            <label for="username">Usuario:</label><br />
+            <input type="text" id="username" name="username" placeholder="Usuario" required><br/>
+            <label for="email">Email:</label><br />
+            <input type="email" id="email" name="email" placeholder="correo@host.com" pattern="^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$" required><br />
+            <button class="btn btn-primary" style="margin-top:10px" type="submit" id="submitF" name="submitF">Verificar</button>
+            <button class="btn btn-danger" style="margin-top:10px" type="reset" id="resetF" name="resetF">Borrar</button>
+        </form>
+        <a href="{{url_for('auth.index')}}">Volver al Inicio</a>
+    </div>
+</div>
+{%endblock%}

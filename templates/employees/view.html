@@ -1,0 +1,126 @@
+{% extends "layout.html" %}
+
+{% block title %}Consultar Empleado{% endblock %}
+
+{% block extra_css %}
+<style>
+    .view-card {
+        border: none;
+        border-radius: 15px;
+        background: rgba(255, 255, 255, 0.8);
+        backdrop-filter: blur(10px);
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+    }
+
+    .info-label {
+        font-weight: bold;
+        color: #6c757d;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+    }
+
+    .info-value {
+        font-size: 1.1rem;
+        color: #2d3436;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #f1f2f6;
+        margin-bottom: 20px;
+    }
+
+    .btn-edit {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        color: white;
+        padding: 12px 30px;
+        transition: transform 0.2s;
+    }
+
+    .btn-edit:hover {
+        transform: scale(1.02);
+        color: white;
+    }
+
+    .status-active {
+        color: #27ae60;
+        font-weight: bold;
+    }
+
+    .status-inactive {
+        color: #e74c3c;
+        font-weight: bold;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="d-flex align-items-center mb-4">
+                <a href="{{ url_for('employees.list_employees') }}"
+                    class="btn btn-sm btn-light rounded-circle me-3 shadow-sm">
+                    <i class="fas fa-arrow-left"></i>
+                </a>
+                <h2 class="h4 mb-0">Consultar Detalles del Empleado</h2>
+            </div>
+
+            <div class="card view-card">
+                <div class="card-body p-4 p-md-5">
+                    <div class="row gx-5">
+                        <div class="col-md-6">
+                            <div class="info-label">Ficha de Empleado</div>
+                            <div class="info-value">{{ employee.id_empleado }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-label">Cédula de Identidad</div>
+                            <div class="info-value">{{ employee.cedula }}</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="info-label">Nombre Completo</div>
+                            <div class="info-value">{{ employee.nombre }} {{ employee.apellido }}</div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-label">Departamento</div>
+                            <div class="info-value">{{ employee.departamento_nombre }}</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <div class="info-label">Tipo de Nómina</div>
+                            <div class="info-value">
+                                <span
+                                    class="badge rounded-pill {{ 'bg-info bg-opacity-10 text-info' if employee.tipo_nomina_id == 1 else 'bg-warning bg-opacity-10 text-warning' }}">
+                                    {{ employee.tipo_nomina_nombre }}
+                                </span>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="info-label">Estado de Validación</div>
+                            <div class="info-value">
+                                {% if employee.boolValidacion %}
+                                <span class="status-active"><i class="fas fa-check-circle me-1"></i> Activo para
+                                    provisión</span>
+                                {% else %}
+                                <span class="status-inactive"><i class="fas fa-times-circle me-1"></i> Inactivo / No
+                                    validado</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-12 mt-5 text-end">
+                        <hr class="my-4">
+                        <a href="{{ url_for('employees.list_employees') }}"
+                            class="btn btn-link text-muted text-decoration-none me-3">Volver a la lista</a>
+                        <a href="{{ url_for('employees.edit_employee', id=employee.id) }}"
+                            class="btn btn-edit rounded-pill shadow">
+                            <i class="fas fa-edit me-2"></i> Modificar Datos
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

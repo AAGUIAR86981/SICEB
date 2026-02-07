@@ -1,0 +1,24 @@
+﻿{%extends 'layout.html'%}
+{%block title%}Olvido Contraseña{%endblock%}
+{%block content%}
+<div class="row">
+    <h1>Ingrese su nueva contraseña</h1>
+    <div class="col">
+        <p>Su contraseña debe contener:</p>
+        <ul>
+            <li>Por lo menos una letra minuscula</li>
+            <li>Por lo menos una letra mayuscula</li>
+            <li>Por lo menos un número</li>
+            <li>Por lo menos un carácter especial (ej.: #, $, %, &,)</li>
+            <li>Y debe tener una longitud de 8 o más caracteres</li>
+        </ul>
+        <form action="/nuevaclave" method="POST">
+            <label for="password">Nueva Contraseña:</label><br>
+            <input type="password" id="password" name="password" placeholder="Nueva Contraseña" pattern="((?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W]).{8,64})" required><br/>
+            <button class="btn btn-primary" type="submit" style="margin-top:10px" id="submitF" name="submitF">Cambiar</button>
+            <button class="btn btn-danger" type="reset" style="margin-top:10px" id="resetF" name="resetF">Borrar</button>
+        </form>
+        <a href="{{url_for('auth.index')}}">Volver al Inicio</a>
+    </div>
+</div>
+{%endblock%}

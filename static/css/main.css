@@ -1,0 +1,322 @@
+:root {
+  --primary-color: #2c3e50;
+  --secondary-color: #3498db;
+  --accent-color: #e74c3c;
+  --light-color: #ecf0f1;
+  --dark-color: #2c3e50;
+}
+
+body {
+  font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+  margin: 0;
+  padding: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #e6f2ff;
+  /* Fondo azul tenue solicitado */
+  color: #333;
+  position: relative;
+}
+
+/* Watermark Background */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-image: url("../images/OIP.png");
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 600px;
+  /* Tamaño solicitado */
+  opacity: 0.1;
+  /* Efecto marca de agua sutil */
+  z-index: -1;
+  pointer-events: none;
+}
+
+/* Header Styles */
+.navbar-brand {
+  font-weight: 700;
+  color: var(--primary-color) !important;
+  font-size: 1.8rem;
+}
+
+.nav-link {
+  font-weight: 500;
+  transition: all 0.3s ease;
+  color: var(--dark-color) !important;
+  padding: 0.5rem 1rem !important;
+  border-radius: 4px;
+  margin: 0 2px;
+}
+
+.nav-link:hover {
+  background-color: var(--secondary-color);
+  color: white !important;
+  transform: translateY(-2px);
+}
+
+.nav-link span {
+  font-size: 1.1rem;
+}
+
+.user-info {
+  background-color: rgba(236, 240, 241, 0.9);
+  /* Ligeramente transparente */
+  border-radius: 5px;
+  padding: 0.5rem;
+  margin-left: 1rem;
+}
+
+/* Main Content */
+.content {
+  flex: 1 0 auto;
+  padding-bottom: 2rem;
+}
+
+h1 {
+  width: 100%; /* Changed from fixed 750px for responsiveness */
+  max-width: 750px;
+  padding: 5px;
+  text-shadow: 2px 4px 6px rgba(0, 0, 0, 0.6);
+  font-size: 3rem;
+  font-style: italic;
+  font-weight: 500;
+}
+
+/* CONTENEDOR PRINCIPAL TRANSPARENTE */
+.main-container {
+  background: rgba(255, 255, 255, 0.4) !important;
+  /* MUY Transparente (40% opacidad) */
+  border-radius: 10px;
+  box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+  margin: 2rem auto;
+  padding: 2rem;
+  backdrop-filter: blur(2px);
+  /* Blur muy suave */
+}
+
+/* Footer Fijo en la parte inferior */
+footer {
+  background: var(--primary-color);
+  color: white;
+  flex-shrink: 0;
+  padding: 1.5rem 0;
+  margin-top: auto;
+  width: 100%;
+}
+
+/* Alert Messages */
+.alert {
+  border-radius: 8px;
+  border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+/* Custom buttons */
+.btn-primary {
+  background-color: var(--secondary-color);
+  border: none;
+  padding: 0.5rem 1.5rem;
+  border-radius: 5px;
+  transition: all 0.3s ease;
+}
+
+.btn-primary:hover {
+  background-color: #2980b9;
+  transform: translateY(-2px);
+}
+
+/* Page specific styles */
+.welcome-header {
+  background: linear-gradient(
+    135deg,
+    rgba(52, 152, 219, 0.9),
+    rgba(44, 62, 80, 0.9)
+  );
+  /* Gradiente con transparencia */
+  color: white;
+  padding: 2rem;
+  border-radius: 10px;
+  margin-bottom: 2rem;
+  opacity: 0.95;
+}
+
+.feature-card {
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+  transition: transform 0.3s ease;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.6) !important;
+  /* Tarjetas transparentes */
+}
+
+.feature-card:hover {
+  transform: translateY(-5px);
+  background: rgba(255, 255, 255, 0.8) !important;
+}
+
+.feature-icon {
+  font-size: 2.5rem;
+  color: var(--secondary-color);
+  margin-bottom: 1rem;
+}
+
+/* Login Form Transparente */
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 70vh;
+  padding: 2rem 0;
+}
+
+.login-form {
+  background: rgba(255, 255, 255, 0.4) !important;
+  /* MUY Transparente (40%) */
+  border-radius: 15px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+  padding: 2.5rem;
+  width: 100%;
+  max-width: 450px;
+  margin: 0 auto;
+  backdrop-filter: blur(2px);
+}
+
+/* Estilos generales formulario */
+.form-title {
+  text-align: center;
+  color: var(--primary-color);
+  margin-bottom: 2rem;
+  font-weight: 600;
+}
+
+.form-label {
+  text-align: center;
+  display: block;
+  width: 100%;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+  color: var(--dark-color);
+}
+
+.form-control {
+  text-align: center;
+  padding: 0.75rem 1.25rem;
+  border: 2px solid #e2e8f0;
+  border-radius: 8px;
+  margin-bottom: 1.5rem;
+  width: 100%;
+  background-color: rgba(255, 255, 255, 0.5) !important;
+  /* Inputs transparentes */
+}
+
+.form-control:focus {
+  border-color: var(--secondary-color);
+  box-shadow: 0 0 0 0.25rem rgba(52, 152, 219, 0.25);
+  background-color: rgba(255, 255, 255, 0.8) !important;
+}
+
+/* Links y botones */
+.btn-center-container {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.forgot-link {
+  display: block;
+  margin-top: 1.5rem;
+  color: var(--secondary-color);
+  text-decoration: none;
+  text-align: center;
+  transition: color 0.3s ease;
+}
+
+.forgot-link:hover {
+  color: #2980b9;
+  text-decoration: underline;
+}
+
+.alert-flash {
+  border-radius: 8px;
+  border: none;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  max-width: 450px;
+  margin: 0 auto 1.5rem auto;
+  padding: 1rem 1.5rem;
+  background-color: rgba(248, 215, 218, 0.8);
+  color: #721c24;
+}
+
+.flash-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  text-align: center;
+}
+
+/* TABLAS TRANSPARENTES - PERMITIENDO VISIBILIDAD DE ENCABEZADOS */
+table,
+.table,
+.table-responsive,
+.table > thead,
+.table > tbody,
+.table > tfoot,
+.table > thead > tr,
+.table > tbody > tr,
+.table > tfoot > tr,
+.table > tbody > tr > td {
+  background-color: transparent !important;
+  --bs-table-bg: transparent !important;
+  --bs-table-accent-bg: transparent !important;
+  background: transparent !important;
+}
+
+/* Excepción para table-dark para que el texto blanco sea legible */
+.table-dark,
+.table-dark th,
+.table-dark td,
+thead.table-dark tr th {
+  background-color: rgba(33, 37, 41, 0.85) !important;
+  color: white !important;
+}
+
+/* Filas alternas muuuuy sutiles */
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+  background-color: rgba(0, 0, 0, 0.05) !important;
+  box-shadow: none !important;
+}
+
+.table-hover > tbody > tr:hover > * {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Ajustes responsivos */
+@media (max-width: 768px) {
+  .navbar-nav {
+    text-align: center;
+  }
+
+  .user-info {
+    margin: 10px 0;
+  }
+
+  .main-container {
+    margin: 1rem;
+    padding: 1.5rem;
+  }
+
+  h1 {
+    font-size: 2rem;
+  }
+}
