@@ -147,6 +147,7 @@
                                         <th>Fecha</th>
                                         <th>Usuario</th>
                                         <th>ID Usuario</th>
+                                        <th>Dirección IP</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -156,11 +157,12 @@
                                         <td>{{ log[0].strftime('%d/%m/%Y %H:%M:%S') if log[0] else 'N/A' }}</td>
                                         <td>{{ log[1] }}</td>
                                         <td>{{ log[2] }}</td>
+                                        <td><code class="text-primary">{{ log[3] if log[3] else 'Local' }}</code></td>
                                     </tr>
                                     {% endfor %}
                                     {% else %}
                                     <tr>
-                                        <td colspan="3" class="text-center">No hay registros de inicio de sesión</td>
+                                        <td colspan="4" class="text-center">No hay registros de inicio de sesión</td>
                                     </tr>
                                     {% endif %}
                                 </tbody>
@@ -293,6 +295,7 @@
                                         <th>ID Usuario</th>
                                         <th>Tipo de Actividad</th>
                                         <th>Detalles</th>
+                                        <th>IP</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -313,12 +316,17 @@
                                                 {{ actividad[3] }}
                                             </span>
                                         </td>
-                                        <td>{{ actividad[4] }}</td>
+                                        <td>
+                                            {{ actividad[4] }}
+                                        </td>
+                                        <td><code
+                                                class="text-primary">{{ actividad[5] if actividad[5] else 'Local' }}</code>
+                                        </td>
                                     </tr>
                                     {% endfor %}
                                     {% else %}
                                     <tr>
-                                        <td colspan="5" class="text-center">No hay actividades registradas</td>
+                                        <td colspan="6" class="text-center">No hay actividades registradas</td>
                                     </tr>
                                     {% endif %}
                                 </tbody>

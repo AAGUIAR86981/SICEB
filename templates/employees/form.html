@@ -101,17 +101,18 @@
                                 <label class="form-label fw-bold">Departamento</label>
                                 <div class="input-group">
                                     <span class="input-group-text text-muted"><i class="fas fa-building"></i></span>
-                                    <input type="text" name="departamento" id="departamento_input"
-                                        list="departments_list" class="form-control"
-                                        value="{{ employee.departamento_nombre if employee else '' }}" required
-                                        placeholder="Seleccione o escriba...">
-                                    <datalist id="departments_list">
+                                    <select name="departamento" class="form-select" style="border-left: none;" required>
+                                        <option value="" disabled {{ 'selected' if not employee }}>Seleccione un
+                                            departamento...</option>
                                         {% for dept in departments %}
-                                        <option value="{{ dept }}">
-                                            {% endfor %}
-                                    </datalist>
+                                        <option value="{{ dept.nombre }}" {{ 'selected' if employee and
+                                            employee.departamento_nombre==dept.nombre }}>
+                                            {{ dept.nombre }}
+                                        </option>
+                                        {% endfor %}
+                                    </select>
                                 </div>
-                                <small class="text-muted">Seleccione de la lista o escriba uno nuevo.</small>
+                                <small class="text-muted">Seleccione de la lista oficial de departamentos.</small>
                             </div>
                             <div class="col-md-6">
                                 <label class="form-label fw-bold">Tipo de Nómina</label>

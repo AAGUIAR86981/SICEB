@@ -2,6 +2,7 @@ from config.database import get_db_connection
 from datetime import datetime
 import json
 import logging
+import mariadb
 from models.employee import Employee
 
 logger = logging.getLogger(__name__)
@@ -9,76 +10,28 @@ logger = logging.getLogger(__name__)
 class Provision:
     @staticmethod
     def get_type_and_week():
-        """Determina el tipo de provisión y el número de semana/quincena real"""
+        """Determina el tipo de provisión y el número de semana/quincena real.
+        
+        Retorna:
+          - semana_iso: número de semana ISO del año (1–53), único dentro del año
+          - quincena:   entero MES*10 + Q, donde Q=1 (días 1-15) o Q=2 (días 16-31).
+                        Ej: febrero 2ª quincena → 22, enero 1ª quincena → 11.
+                        Esto lo hace único por mes dentro de un mismo año.
+        """
         serverDatetime = datetime.now()
         dia_del_mes = serverDatetime.day
+        mes = serverDatetime.month
         
-        # Para Semanal: Usamos el número de semana ISO del año (1-53)
+        # Para Semanal: número de semana ISO (1-53), único por año
         semana_iso = serverDatetime.isocalendar()[1]
         
-        # Para Quincenal: 1 (primera mitad) o 2 (segunda mitad)
-        quincena = 1 if dia_del_mes <= 15 else 2
+        # Para Quincenal: codificado como MES*10 + Q para ser único por mes/año
+        mitad = 1 if dia_del_mes <= 15 else 2
+        quincena = mes * 10 + mitad   # ej: feb-2ª = 22, ene-1ª = 11
         
         return semana_iso, quincena
 
-    @staticmethod
-    def get_available_tables():
-        """Obtiene las configuraciones activas de provisión"""
-        conn = None
-        cursor = None
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True) # Use dictionary cursor for easier access
-            
-            # Obtener configs activas
-            cursor.execute("SELECT * FROM provision_configs WHERE active = TRUE")
-            configs = cursor.fetchall()
-            
-            config_semanal = next((c for c in configs if c['provision_type'] == 'semanal'), None)
-            config_quincenal = next((c for c in configs if c['provision_type'] == 'quincenal'), None)
 
-            return config_semanal, config_quincenal
-        except Exception as e:
-            logger.error(f"Error checking provision configs: {e}")
-            return None, None
-        finally:
-            if cursor: cursor.close()
-            if conn: conn.close()
-
-    @staticmethod
-    def get_products(config_id, semProv):
-        """Obtiene los productos de la provisión basada en el ID de configuración"""
-        if not config_id:
-            return []
-
-        conn = None
-        cursor = None
-        try:
-            conn = get_db_connection()
-            cursor = conn.cursor()
-            
-            # Obtener items de la config
-            # Nota: semProv (week_number) debería coincidir con la config, pero confiamos en el ID
-            cursor.execute('''
-                SELECT product_name, quantity 
-                FROM provision_items 
-                WHERE provision_config_id = %s
-            ''', (config_id,))
-            
-            items = cursor.fetchall()
-            # items format: [(name, qty), (name, qty)...] which matches expected [(rubro, cant)...]
-            
-            # Convertir a formato lista de tuplas (Nombre, Cantidad)
-            prodCant = [(item[0], str(item[1])) for item in items]
-
-            return prodCant
-
-        except Exception as e:
-            logger.error(f"Error obteniendo productos de provisión: {e}")
-            return []
-        finally:
-            if cursor: cursor.close()
-            if conn: conn.close()
 
     @staticmethod
     def save_log(semProv, tipo_nomina, user_name, asignados_count, invalidados_count):
@@ -126,10 +79,13 @@ class Provision:
             
             # Start transaction explicitly if needed (mariadb connector usually handles it if autocommit is off)
             
+            from utils.helpers import get_client_ip
+            ip = get_client_ip()
+
             cursor.execute('''
                 INSERT INTO provisiones_historial
-                (tipo_provision, semana, tipo_nomina, productos, cant_aprobados, cant_rechazados, datos_completos, usuario_id, usuario_nombre)
-                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                (tipo_provision, semana, tipo_nomina, productos, cant_aprobados, cant_rechazados, datos_completos, usuario_id, usuario_nombre, ip_address)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
             ''', (
                 tipo_provision,
                 semana,
@@ -139,12 +95,13 @@ class Provision:
                 len(invalidados),
                 datos_completos_json,
                 usuario_id,
-                usuario_nombre
+                usuario_nombre,
+                ip
             ))
             
             provision_id = cursor.lastrowid
 
-            # Insert into the new relational detail table
+            # Insert into the new relational detail table (products)
             for item in productos:
                 # productos item format could be (name, qty) or [name, qty]
                 if isinstance(item, (list, tuple)) and len(item) >= 2:
@@ -153,12 +110,36 @@ class Provision:
                         VALUES (%s, %s, %s)
                     ''', (provision_id, item[0], item[1]))
 
+            # --- NUEVO: Insertar beneficiarios individuales ---
+            # 1. Asignados (recibieron el beneficio)
+            for emp in asignados:
+                nombre_completo = f"{emp.get('nombre', '')} {emp.get('apellido', '')}".strip()
+                cursor.execute('''
+                    INSERT INTO provision_beneficiarios 
+                    (provision_id, empleado_id, cedula, nombre_completo, departamento, recibio)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                ''', (provision_id, emp.get('id'), emp.get('cedula'), nombre_completo, emp.get('departamento'), True))
+
+            # 2. Invalidados (no recibieron el beneficio)
+            for emp in invalidados:
+                nombre_completo = f"{emp.get('nombre', '')} {emp.get('apellido', '')}".strip()
+                cursor.execute('''
+                    INSERT INTO provision_beneficiarios 
+                    (provision_id, empleado_id, cedula, nombre_completo, departamento, recibio)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                ''', (provision_id, emp.get('id'), emp.get('cedula'), nombre_completo, emp.get('departamento'), False))
+
             conn.commit()
-            return True
-        except Exception as e:
-            logger.error(f"Error guardando en historial: {e}")
+            return provision_id
+        except mariadb.Error as e:
+            logger.error(f"Error de base de datos en save_history: {e}")
             if conn: conn.rollback()
-            return False
+            # Relanzar para que el controlador pueda manejar errores específicos como el 1062
+            raise e
+        except Exception as e:
+            logger.error(f"Error inesperado en save_history: {e}")
+            if conn: conn.rollback()
+            return None
         finally:
             if cursor: cursor.close()
             if conn: conn.close()
@@ -173,7 +154,7 @@ class Provision:
             cursor = conn.cursor()
             cursor.execute('''
                 SELECT id, tipo_provision, semana, tipo_nomina, productos, datos_completos, 
-                       fecha_creacion, usuario_nombre, cant_aprobados, cant_rechazados
+                       fecha_creacion, usuario_nombre, cant_aprobados, cant_rechazados, ip_address
                 FROM provisiones_historial
                 ORDER BY fecha_creacion DESC
                 LIMIT %s
@@ -187,30 +168,56 @@ class Provision:
             if conn: conn.close()
 
     @staticmethod
+    def get_last_provision_date():
+        """Obtiene la fecha de la última provisión registrada para cualquier nómina"""
+        conn = None
+        cursor = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            cursor.execute('''
+                SELECT fecha_creacion 
+                FROM provisiones_historial 
+                ORDER BY fecha_creacion DESC 
+                LIMIT 1
+            ''')
+            result = cursor.fetchone()
+            return result[0] if result else None
+        except Exception as e:
+            logger.error(f"Error getting last provision date: {e}")
+            return None
+        finally:
+            if cursor: cursor.close()
+            if conn: conn.close()
+
+    @staticmethod
     def get_active_combos():
         """Obtiene los combos activos para el selector de provisión"""
         conn = None
         cursor = None
+        item_cursor = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor(dictionary=True)
             cursor.execute("SELECT id, nombre, descripcion FROM combos WHERE activo = TRUE")
             combos = cursor.fetchall()
             
+            item_cursor = conn.cursor(dictionary=True)
             for combo in combos:
-                cursor.execute("""
+                item_cursor.execute("""
                     SELECT cp.nombre, ci.cantidad
                     FROM combo_items ci
                     JOIN catalogo_productos cp ON ci.producto_id = cp.id
                     WHERE ci.combo_id = %s
                 """, (combo['id'],))
-                combo['items'] = cursor.fetchall()
+                combo['items'] = item_cursor.fetchall()
                 
             return combos
         except Exception as e:
             logger.error(f"Error getting combos for provision: {e}")
             return []
         finally:
+            if item_cursor: item_cursor.close()
             if cursor: cursor.close()
             if conn: conn.close()
 
@@ -241,6 +248,64 @@ class Provision:
         except Exception as e:
             logger.error(f"Error checking provision existence: {e}")
             return False
+        finally:
+            if cursor: cursor.close()
+            if conn: conn.close()
+
+    @staticmethod
+    def get_beneficiary_report(filters=None):
+        """Obtiene el reporte detallado de beneficiarios con filtros opcionales"""
+        conn = None
+        cursor = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor(dictionary=True)
+            
+            query = """
+                SELECT 
+                    pb.cedula, pb.nombre_completo, pb.departamento, pb.recibio, pb.fecha_entrega,
+                    ph.tipo_nomina, ph.tipo_provision, ph.semana, ph.productos,
+                    e.id_empleado
+                FROM provision_beneficiarios pb
+                JOIN provisiones_historial ph ON pb.provision_id = ph.id
+                LEFT JOIN empleados e ON pb.empleado_id = e.id
+            """
+            params = []
+            where_clauses = []
+            
+            if filters:
+                if filters.get('provision_id'):
+                    where_clauses.append("pb.provision_id = %s")
+                    params.append(filters['provision_id'])
+                if filters.get('recibio') is not None:
+                    where_clauses.append("pb.recibio = %s")
+                    params.append(filters['recibio'])
+                if filters.get('cedula'):
+                    where_clauses.append("pb.cedula LIKE %s")
+                    params.append(f"%{filters['cedula']}%")
+                if filters.get('nombre'):
+                    where_clauses.append("pb.nombre_completo LIKE %s")
+                    params.append(f"%{filters['nombre']}%")
+                if filters.get('semana'):
+                    where_clauses.append("ph.semana = %s")
+                    params.append(filters['semana'])
+                if filters.get('tipo_nomina'):
+                    where_clauses.append("ph.tipo_nomina = %s")
+                    params.append(filters['tipo_nomina'])
+                if filters.get('fecha'):
+                    where_clauses.append("DATE(pb.fecha_entrega) = %s")
+                    params.append(filters['fecha'])
+            
+            if where_clauses:
+                query += " WHERE " + " AND ".join(where_clauses)
+            
+            query += " ORDER BY pb.fecha_entrega DESC LIMIT 500"
+            
+            cursor.execute(query, params)
+            return cursor.fetchall()
+        except Exception as e:
+            logger.error(f"Error getting beneficiary report: {e}")
+            return []
         finally:
             if cursor: cursor.close()
             if conn: conn.close()

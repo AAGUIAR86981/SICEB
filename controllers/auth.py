@@ -32,6 +32,9 @@ def access():
             user = User.get_by_username(username)
             
             if user:
+
+                # Capturamos el ultimo acceso de sesion actual de la BD
+                fecha_anterior = user.original_row[8] if len(user.original_row) > 8 else None
                 # Comprobar si requiere cambio de password (legacy logic)
                 # user.original_row[3] es password hash
                 if user.password == 'newuser':
@@ -47,7 +50,19 @@ def access():
                     session['id'] = user.id
                     session['user'] = user.username
                     session['userAlias'] = user.username
+                    session['last_access'] = fecha_anterior  # <--- GUARDAR EN SESIÓN AQUÍ
                     session['isAdmin'] = 1 if user.is_admin else 0
+                    
+                    # ACTUALIZAR DB PARA LA PRÓXIMA VEZ
+                    from config.database import get_db_connection
+                    from utils.helpers import get_client_ip
+                    ip = get_client_ip()
+                    conn = get_db_connection()
+                    cursor = conn.cursor()
+                    cursor.execute("UPDATE users SET last_login = NOW(), last_ip = %s WHERE id = %s", (ip, user.id))
+                    conn.commit()
+                    cursor.close()
+                    conn.close()
                     
                     if user.name: session['name'] = user.name
                     if user.lastname: session['lastname'] = user.lastname
@@ -222,7 +237,7 @@ def eliminar_usuario(user_id):
         })
 
     except Exception as e:
-        print(f"❌ Error eliminando usuario {user_id}: {e}")
+        print(f" Error eliminando usuario {user_id}: {e}")
         return jsonify({
             'success': False,
             'message': f'Error al eliminar usuario: {str(e)}'
@@ -257,12 +272,12 @@ def crear_usuario_admin():
             # Verificar si el usuario o email ya existen (usando helper existente o try/catch en create)
             # En este caso, User.create fallará si hay unique constraints, pero mejor verificar antes si es posible
             # o manejar la excepción. El código original verificaba explícitamente.
-            if User.get_id_by_username_email(username, email):
+            if User.get_id_by_username_email(username, email, password):
                  flash('El username o email ya están registrados', 'error')
                  return redirect(url_for('auth.crear_usuario_admin'))
 
             # Crear usuario usando el modelo
-            User.create(username, email, password, name, lastname, is_admin, role_id)
+            User.create(username, email, name, lastname, password, is_admin, role_id)
 
             # Registrar actividad
             log_user_activity(
@@ -276,7 +291,7 @@ def crear_usuario_admin():
             return redirect(url_for('auth.listar_usuarios'))
 
         except Exception as e:
-            print(f"❌ Error creando usuario: {e}")
+            print(f" Error creando usuario: {e}")
             flash(f'Error al crear usuario: {str(e)}', 'error')
             return redirect(url_for('auth.crear_usuario_admin'))
 
@@ -294,7 +309,7 @@ def crear_usuario_admin():
         return render_template('admin/crear_usuario.html', roles=roles)
 
     except Exception as e:
-        print(f"❌ Error cargando roles: {e}")
+        print(f" Error cargando roles: {e}")
         flash('Error al cargar formulario', 'error')
         return redirect(url_for('auth.listar_usuarios'))
     finally:
@@ -356,7 +371,7 @@ def cambiar_estado_usuario(user_id):
         })
 
     except Exception as e:
-        print(f"❌ Error cambiando estado: {e}")
+        print(f" Error cambiando estado: {e}")
         return jsonify({
             'success': False,
             'message': f'Error: {str(e)}'

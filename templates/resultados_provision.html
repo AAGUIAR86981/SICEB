@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -17,43 +18,44 @@
             z-index: 10;
             backdrop-filter: blur(10px);
         }
-        
+
         .table-responsive {
             border-radius: 8px;
             border: 1px solid #dee2e6;
         }
-        
+
         .card {
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
             border: none;
             margin-bottom: 20px;
             border-radius: 10px;
         }
-        
+
         .card-header {
             border-radius: 10px 10px 0 0 !important;
         }
-        
+
         .badge {
             font-size: 0.75em;
             padding: 0.5em 0.75em;
         }
-        
+
         .btn {
             margin: 0 2px;
         }
-        
-        .export-btn:hover, .pdf-btn:hover {
+
+        .export-btn:hover,
+        .pdf-btn:hover {
             transform: translateY(-2px);
             transition: transform 0.2s;
         }
-        
+
         @media (max-width: 768px) {
             .card-footer .d-flex {
                 flex-direction: column;
                 gap: 10px;
             }
-            
+
             .btn-group {
                 width: 100%;
                 justify-content: center;
@@ -62,21 +64,26 @@
 
         /* Estilos para impresión */
         @media print {
-            .no-print, .card-footer, .btn, .alert, .navbar {
+
+            .no-print,
+            .card-footer,
+            .btn,
+            .alert,
+            .navbar {
                 display: none !important;
             }
-            
+
             .card {
                 border: 1px solid #000 !important;
                 box-shadow: none !important;
                 page-break-inside: avoid;
             }
-            
+
             .card-header {
                 background-color: #f8f9fa !important;
                 color: #000 !important;
             }
-            
+
             body {
                 font-size: 12px;
                 margin: 0;
@@ -85,6 +92,7 @@
         }
     </style>
 </head>
+
 <body>
     <!-- Navbar Simple -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary no-print">
@@ -96,14 +104,14 @@
     <div class="container-fluid mt-4">
         <!-- Mensajes Flash -->
         {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                {% for category, message in messages %}
-                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
-                        {{ message }}
-                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                    </div>
-                {% endfor %}
-            {% endif %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+        {% endif %}
         {% endwith %}
 
         <!-- Validación de datos -->
@@ -112,19 +120,18 @@
             <h4>❌ Error: Datos de provisión no disponibles</h4>
             <p>Los datos de la provisión no se cargaron correctamente.</p>
             <a href="{{ url_for('provision.make_provision') }}" class="btn btn-primary">Volver a Provisión</a>
-           
+
         </div>
         {% else %}
-        
+
         <!-- Encabezado -->
         <div class="row mb-4">
             <div class="col-12 text-center">
                 <h1 class="text-primary">Resultados de Provisión</h1>
                 <p class="lead">
-                    <strong>Nómina:</strong> 
-                    {% if session['nomina'] == '1' %}Semanal{% else %}Quincenal{% endif %} 
-                    | <strong>Semana #{{ session['semana'] }}</strong> 
-                    | <strong>Combo #{{ session['semProv'] }}</strong>
+                    <strong>Nómina:</strong>
+                    {% if session['nomina'] == '1' %}Semanal{% else %}Quincenal{% endif %}
+                    | <strong>Periodo #{{ session['semana'] }}</strong>
                 </p>
                 <p class="text-muted">{{ session['fecha'] }}</p>
             </div>
@@ -152,7 +159,8 @@
                 <div class="card text-white bg-info">
                     <div class="card-body text-center">
                         <h5 class="card-title">Total General</h5>
-                        <h2 class="card-text">{{ (session['asignados'] | length) + (session['invalidados'] | length) }}</h2>
+                        <h2 class="card-text">{{ (session['asignados'] | length) + (session['invalidados'] | length) }}
+                        </h2>
                     </div>
                 </div>
             </div>
@@ -196,15 +204,19 @@
                                 <div class="card shadow-lg mb-4 bg-transparent border-0">
                                     <div class="card-header bg-success text-white">
                                         <div class="d-flex justify-content-between align-items-center">
-                                            <h4 class="mb-0"><i class="fas fa-check-circle me-2"></i>Personal Asignado</h4>
+                                            <h4 class="mb-0"><i class="fas fa-check-circle me-2"></i>Personal Asignado
+                                            </h4>
                                             <div class="input-group w-50">
-                                                <span class="input-group-text bg-white bg-opacity-75 border-0"><i class="fas fa-search"></i></span>
-                                                <input type="text" id="searchAsignados" class="form-control border-0" placeholder="Buscar en asignados...">
+                                                <span class="input-group-text bg-white bg-opacity-75 border-0"><i
+                                                        class="fas fa-search"></i></span>
+                                                <input type="text" id="searchAsignados" class="form-control border-0"
+                                                    placeholder="Buscar en asignados...">
                                             </div>
                                         </div>
                                     </div>
                                     <div class="card-body bg-white bg-opacity-25 p-0">
-                                        <div id="dvContainer1" class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                        <div id="dvContainer1" class="table-responsive"
+                                            style="max-height: 500px; overflow-y: auto;">
                                             <table class="table table-hover mb-0" id="tableAsignados">
                                                 <thead class="table-dark sticky-top">
                                                     <tr>
@@ -252,19 +264,19 @@
                                        data-type="asignados">
                                         📄 CSV
                                     </a> -->
-                                    <a href="{{ url_for('provision.exportar_empleados', tipo_empleado='asignados', formato='csv') }}" 
-                                       class="btn btn-info btn-sm export-btn" 
-                                       data-format="xlsx" 
-                                       data-type="asignados">
+                                    <a href="{{ url_for('provision.exportar_empleados', tipo_empleado='asignados', formato='xlsx') }}"
+                                        class="btn btn-info btn-sm export-btn" data-format="xlsx" data-type="asignados">
                                         📊 Excel
                                     </a>
                                 </div>
                             </div>
                             <div class="btn-group">
-                                <button type="button" class="btn btn-danger" id="btnPrint1" onclick="imprimirTabla('asignados')">
+                                <button type="button" class="btn btn-danger" id="btnPrint1"
+                                    onclick="imprimirTabla('asignados')">
                                     🖨️ Imprimir
                                 </button>
-                                <button type="button" class="btn btn-dark pdf-btn" onclick="exportToPDF('dvContainer1', 'empleados_asignados')">
+                                <button type="button" class="btn btn-dark pdf-btn"
+                                    onclick="exportToPDF('dvContainer1', 'empleados_asignados')">
                                     📑 PDF
                                 </button>
                             </div>
@@ -332,19 +344,20 @@
                                        data-type="invalidados">
                                         📊 Excel
                                     </a> -->
-                                    <a href="{{ url_for('provision.exportar_empleados', tipo_empleado='invalidados', formato='csv') }}" 
-                                       class="btn btn-info btn-sm export-btn" 
-                                       data-format="csv" 
-                                       data-type="invalidados">
+                                    <a href="{{ url_for('provision.exportar_empleados', tipo_empleado='invalidados', formato='xlsx') }}"
+                                        class="btn btn-info btn-sm export-btn" data-format="xlsx"
+                                        data-type="invalidados">
                                         📊 Excel
                                     </a>
                                 </div>
                             </div>
                             <div class="btn-group">
-                                <button type="button" class="btn btn-danger" id="btnPrint2" onclick="imprimirTabla('invalidados')">
+                                <button type="button" class="btn btn-danger" id="btnPrint2"
+                                    onclick="imprimirTabla('invalidados')">
                                     🖨️ Imprimir
                                 </button>
-                                <button type="button" class="btn btn-dark pdf-btn" onclick="exportToPDF('dvContainer2', 'empleados_invalidados')">
+                                <button type="button" class="btn btn-dark pdf-btn"
+                                    onclick="exportToPDF('dvContainer2', 'empleados_invalidados')">
                                     📑 PDF
                                 </button>
                             </div>
@@ -361,7 +374,7 @@
                 <a href="{{ url_for('provision.make_provision') }}" class="btn btn-primary btn-lg">
                     🔄 Realizar Nueva Provisión
                 </a>
-                
+
                 <a href="/main" class="btn btn-outline-dark btn-lg">
                     🏠 Ir al Inicio
                 </a>
@@ -374,7 +387,7 @@
     <!-- Incluir main.js para tener acceso a initTableSearch -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     <script type="text/javascript">
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', function () {
             console.log('Página de resultados lista');
             // Cargar script de búsqueda si está disponible
             if (typeof initTableSearch === 'function') {
@@ -382,25 +395,27 @@
                 initTableSearch('searchInvalidados', 'tableInvalidados');
             }
         });
-        $(document).ready(function() {
+        $(document).ready(function () {
             // Feedback visual para botones de exportación
-            $('.export-btn').on('click', function(e) {
+            $('.export-btn').on('click', function (e) {
                 var $btn = $(this);
+                if ($btn.hasClass('disabled')) return;
+
                 var originalText = $btn.html();
-                $btn.html('⏳ Generando...').prop('disabled', true);
-                
-                setTimeout(function() {
-                    $btn.html(originalText).prop('disabled', false);
+                $btn.html('<i class="fas fa-spinner fa-spin me-1"></i> Generando...').addClass('disabled');
+
+                setTimeout(function () {
+                    $btn.html(originalText).removeClass('disabled');
                 }, 3000);
             });
 
             // Feedback para botones PDF
-            $('.pdf-btn').on('click', function(e) {
+            $('.pdf-btn').on('click', function (e) {
                 var $btn = $(this);
                 var originalText = $btn.html();
                 $btn.html('⏳ Creando PDF...').prop('disabled', true);
-                
-                setTimeout(function() {
+
+                setTimeout(function () {
                     $btn.html(originalText).prop('disabled', false);
                 }, 4000);
             });
@@ -414,20 +429,20 @@
         // Función para exportar a PDF - MEJORADA
         function exportToPDF(containerId, filename) {
             const { jsPDF } = window.jspdf;
-            
+
             // Crear un nuevo PDF
             const doc = new jsPDF('p', 'mm', 'a4');
             const element = document.getElementById(containerId);
-            
+
             // Agregar título
             doc.setFontSize(16);
             doc.text('Reporte de ' + filename.replace('_', ' ').toUpperCase(), 105, 15, { align: 'center' });
-            
+
             // Agregar fecha
             doc.setFontSize(10);
             doc.text('Generado: ' + new Date().toLocaleDateString(), 105, 22, { align: 'center' });
             doc.text('Hora: ' + new Date().toLocaleTimeString(), 105, 28, { align: 'center' });
-            
+
             // Usar html2canvas para capturar el contenido
             html2canvas(element, {
                 scale: 2, // Mejor calidad
@@ -437,7 +452,7 @@
                 const imgData = canvas.toDataURL('image/png');
                 const imgWidth = 190;
                 const imgHeight = canvas.height * imgWidth / canvas.width;
-                
+
                 doc.addImage(imgData, 'PNG', 10, 35, imgWidth, imgHeight);
                 doc.save(filename + '.pdf');
             }).catch(error => {
@@ -452,4 +467,5 @@
         }
     </script>
 </body>
+
 </html>

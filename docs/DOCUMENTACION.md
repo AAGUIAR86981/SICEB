@@ -87,4 +87,8 @@ El sistema gestiona permisos específicos por módulo. Los roles (Administrador,
 
 ## 7. Mantenimiento
 
-Toda la estructura se centraliza en `init_database.py`. Para limpiezas profundas o migraciones, se dispone del script `scripts/cleanup_database.py`.
+Toda la estructura se centraliza en `init_database.py`. Para tareas administrativas adicionales, se utilizan los scripts ubicados en la carpeta `scripts/`, tales como:
+- `backup_database.py`: Respaldo programado de la base de datos.
+- `restore_database.py`: Restauración de la base de datos desde un archivo SQL.
+- `fix_permissions.py`: Ajuste de permisos de archivos.
+

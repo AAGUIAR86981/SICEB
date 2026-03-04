@@ -10,7 +10,7 @@ admin_bp = Blueprint('admin', __name__)
 @admin_bp.route('/admin', methods=['GET', 'POST'])
 @admin_required
 def admin():
-    """Panel de administración (igual que en tu código original)"""
+    """Panel de administración """
     conn = None
     cursor = None
     try:
@@ -60,11 +60,11 @@ def admin():
             flash('Ususario creado exitosamente')
 
         # Obtener historial de inicios de sesión
-        cursor.execute("SELECT activity_date, username, user_id FROM user_activities WHERE activity_type = 'Inicio de sesión' ORDER BY activity_date DESC LIMIT 50")
+        cursor.execute("SELECT activity_date, username, user_id, ip_address FROM user_activities WHERE activity_type = 'Inicio de sesión' ORDER BY activity_date DESC LIMIT 50")
         userlogs = cursor.fetchall()
 
         # Obtener actividades de usuarios
-        cursor.execute('SELECT activity_date, username, user_id, activity_type, activity_details FROM user_activities ORDER BY activity_date DESC LIMIT 100')
+        cursor.execute('SELECT activity_date, username, user_id, activity_type, activity_details, ip_address FROM user_activities ORDER BY activity_date DESC LIMIT 100')
         user_activities = cursor.fetchall()
 
         # Obtener conteo de usuarios

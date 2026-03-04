@@ -194,3 +194,41 @@ class Product:
         finally:
             if cursor: cursor.close()
             if conn: conn.close()
+
+    @staticmethod
+    def get_delivery_summary():
+        """Obtiene un resumen de unidades entregadas procesando el JSON de provisiones"""
+        conn = None
+        cursor = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor(dictionary=True)
+            ## Es importante usar dictionary=True para que la interfaz 
+            # reciba nombres de columnas como 'Producto' en vez de índices numéricos
+            sql = """
+                SELECT 
+                    jt.nombre_producto AS Producto,
+                    SUM(jt.cantidad_entregada * ph.cant_aprobados) AS Total_Unidades,
+                    COUNT(DISTINCT ph.id) AS Cantidad_Provisiones
+                FROM provisiones_historial ph
+                CROSS JOIN JSON_TABLE(
+                    ph.productos,
+                    '$[*]' COLUMNS (
+                        nombre_producto VARCHAR(100) PATH '$[0]',
+                        cantidad_entregada INT PATH '$[1]'
+                    )
+                ) AS jt
+                GROUP BY jt.nombre_producto
+                ORDER BY total_unidades DESC
+            """
+            
+            cursor.execute(sql)
+            return cursor.fetchall()
+        except Exception as e:
+            logger.error(f"Error en reporte de entregas: {e}")
+            return []
+        finally:
+            if cursor:
+                cursor.close()
+            if conn:
+                conn.close()

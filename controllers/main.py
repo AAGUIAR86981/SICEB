@@ -8,7 +8,7 @@ main_bp = Blueprint('main', __name__)
 @main_bp.route('/main')
 @login_required
 def main_page():
-    """Página principal después del login (igual que en tu código original)"""
+    """Página principal después del login """
     conn = None
     cursor = None
     try:

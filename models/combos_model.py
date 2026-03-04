@@ -40,18 +40,32 @@ class ComboModel:
 
     @staticmethod
     def get_active_combos():
-        """Obtiene solo los combos activos"""
+        """Obtiene solo los combos activos con sus items"""
         conn = None
         cursor = None
+        item_cursor = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor(dictionary=True)
             cursor.execute("SELECT * FROM combos WHERE activo = TRUE ORDER BY nombre ASC")
-            return cursor.fetchall()
+            combos = cursor.fetchall()
+            
+            item_cursor = conn.cursor(dictionary=True)
+            for combo in combos:
+                item_cursor.execute("""
+                    SELECT ci.id, ci.producto_id, ci.cantidad, cp.nombre, cp.unidad 
+                    FROM combo_items ci
+                    JOIN catalogo_productos cp ON ci.producto_id = cp.id
+                    WHERE ci.combo_id = %s
+                """, (combo['id'],))
+                combo['items'] = item_cursor.fetchall()
+                
+            return combos
         except Exception as e:
             logger.error(f"Error getting active combos: {e}")
             return []
         finally:
+            if item_cursor: item_cursor.close()
             if cursor: cursor.close()
             if conn: conn.close()
 

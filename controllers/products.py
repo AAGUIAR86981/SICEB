@@ -3,6 +3,9 @@ from models.product import Product
 from utils.decorators import login_required, admin_required
 from utils.helpers import log_user_activity
 
+
+
+
 products_bp = Blueprint('products', __name__, url_prefix='/products')
 
 @products_bp.route('/')
@@ -184,3 +187,9 @@ def toggle_product(product_id):
             'success': False,
             'message': f'Error: {str(e)}'
         }), 500
+
+@products_bp.route('/reporte-entregas')
+def reporte_entregas():
+    # Llamamos al método del query JSON_TABLE para consulta de productos entregados
+    datos = Product.get_delivery_summary()
+    return render_template('products/reporte_entregas.html', reporte=datos)

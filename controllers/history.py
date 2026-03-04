@@ -5,6 +5,7 @@ from math import ceil
 import pandas as pd
 from io import BytesIO
 from datetime import datetime
+from openpyxl.utils import get_column_letter
 
 history_bp = Blueprint('history', __name__)
 
@@ -12,14 +13,14 @@ history_bp = Blueprint('history', __name__)
 @history_bp.route('/historico')
 @login_required
 def history():
-    """Histórico de provisiones (igual que en tu código original)"""
+    """Histórico de provisiones """
     conn = None
     cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
 
-        cursor.execute('SELECT semana, cant_aprobados, cant_rechazados, tipo_nomina, usuario_nombre, fecha_creacion FROM provisiones_historial ORDER BY fecha_creacion DESC')
+        cursor.execute('SELECT semana, cant_aprobados, cant_rechazados, tipo_nomina, usuario_nombre, fecha_creacion, ip_address FROM provisiones_historial ORDER BY fecha_creacion DESC')
         logs = cursor.fetchall()
 
         cursor.execute('SELECT SUM(cant_aprobados) as total_aprob, SUM(cant_rechazados) as total_rechazado FROM provisiones_historial')
@@ -55,7 +56,7 @@ def history():
         return render_template('historico.html')
 
     except Exception as e:
-        print(f"❌ Error en historial: {e}")
+        print(f" Error en historial: {e}")
         flash(f'Error al cargar el historial: {str(e)}', 'error')
         # En lugar de redirigir, mostrar página con datos vacíos
         session['total'] = 0
@@ -70,7 +71,6 @@ def history():
             cursor.close()
         if conn:
             conn.close()
-
 
 @history_bp.route('/descargar_historico_excel')
 @login_required
@@ -182,20 +182,21 @@ def descargar_historico_excel():
             df_graficos = pd.DataFrame(datos_graficos)
             df_graficos.to_excel(writer, sheet_name='Datos_para_Gráficos', index=False)
 
-            # Ajustar anchos de columnas
+            # Ajustar anchos de columnas para todas las hojas
             for sheet_name in writer.sheets:
                 worksheet = writer.sheets[sheet_name]
-                for column in worksheet.columns:
+                for col_idx, column_cells in enumerate(worksheet.columns, 1):
                     max_length = 0
-                    column_letter = column[0].column_letter
-                    for cell in column:
+                    column_letter = get_column_letter(col_idx)
+                    for cell in column_cells:
                         try:
-                            if len(str(cell.value)) > max_length:
-                                max_length = len(str(cell.value))
+                            if cell.value:
+                                length = len(str(cell.value))
+                                if length > max_length:
+                                    max_length = length
                         except:
                             pass
-                    adjusted_width = min(max_length + 2, 50)  # Máximo 50 caracteres
-                    worksheet.column_dimensions[column_letter].width = adjusted_width
+                    worksheet.column_dimensions[column_letter].width = min(max_length + 2, 50)
 
         output.seek(0)
 

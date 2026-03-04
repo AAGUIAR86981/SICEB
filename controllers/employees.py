@@ -1,8 +1,9 @@
 from flask import Blueprint, render_template, request, flash, redirect, url_for, session
 from models.employee import Employee
 from utils.decorators import login_required, permission_required
-from utils.helpers import log_user_activity
+from utils.helpers import log_user_activity, exportar_excel_generic, exportar_csv
 import math
+from datetime import datetime
 
 employees_bp = Blueprint('employees', __name__, url_prefix='/empleados')
 
@@ -40,6 +41,52 @@ def list_employees():
                           estado=estado,
                           page=page,
                           total_pages=total_pages)
+
+@employees_bp.route('/exportar/<formato>')
+@login_required
+@permission_required('manage_employees')
+def exportar_empleados(formato):
+    """Exporta la lista de empleados actual según filtros"""
+    try:
+        search = request.args.get('search', '')
+        tipo_nomina = request.args.get('tipo_nomina', '')
+        estado = request.args.get('estado', '')
+
+        # Obtener TODOS los empleados que coinciden con los filtros (sin paginación)
+        employees = Employee.get_all_with_filters(
+            search=search, 
+            tipo_nomina=tipo_nomina, 
+            estado=estado if estado else None,
+            limit=2000, # Límite razonable
+            offset=0
+        )
+
+        headers = ['ID Empleado', 'Cédula', 'Nombre', 'Apellido', 'Departamento', 'Nómina', 'Estado']
+        datos = []
+        for emp in employees:
+            nomina_txt = "Semanal" if str(emp.get('tipoNomina')) == '1' else "Quincenal"
+            estado_txt = "Activo" if emp.get('boolValidacion') else "Inactivo"
+            datos.append([
+                emp.get('id_empleado'),
+                emp.get('cedula'),
+                emp.get('nombre'),
+                emp.get('apellido'),
+                emp.get('departamento'),
+                nomina_txt,
+                estado_txt
+            ])
+
+        filename = f"lista_empleados_{datetime.now().strftime('%Y%m%d')}"
+        titulo = "LISTADO DE EMPLEADOS"
+
+        if formato == 'csv':
+            return exportar_csv(datos, headers, filename, titulo)
+        return exportar_excel_generic(datos, headers, filename, titulo)
+
+    except Exception as e:
+        print(f"Error exportando empleados: {e}")
+        flash(f'Error al exportar el listado de empleados: {str(e)}', 'error')
+        return redirect(url_for('employees.list_employees', **request.args))
 
 @employees_bp.route('/nuevo', methods=['GET', 'POST'])
 @login_required

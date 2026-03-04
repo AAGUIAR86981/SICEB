@@ -80,12 +80,12 @@ def asignar_roles(user_id):
             
             # Actualizar roles
             if update_user_roles(user_id, roles_seleccionados):
-                flash('✅ Roles actualizados correctamente', 'success')
+                flash(' Roles actualizados correctamente', 'success')
             else:
-                flash('❌ Error al actualizar roles', 'danger')
+                flash(' Error al actualizar roles', 'danger')
                 
         except Exception as e:
-            flash(f'❌ Error: {str(e)}', 'danger')
+            flash(f' Error: {str(e)}', 'danger')
     
     return redirect(url_for('roles.gestion_roles'))
 
@@ -122,11 +122,11 @@ def toggle_user(user_id):
         
         if User.toggle_active_status(user_id, new_status):
             msg = 'Usuario activado' if new_status == 1 else 'Usuario desactivado'
-            flash(f'✅ {msg} correctamente', 'success')
+            flash(f' {msg} correctamente', 'success')
         else:
-            flash('❌ Error al cambiar estado', 'danger')
+            flash(' Error al cambiar estado', 'danger')
     except Exception as e:
-        flash(f'❌ Error: {str(e)}', 'danger')
+        flash(f' Error: {str(e)}', 'danger')
     finally:
         if cursor: cursor.close()
         if conn: conn.close()
@@ -158,10 +158,10 @@ def update_user_config(user_id):
             cursor.execute("INSERT INTO user_roles (user_id, role_id) VALUES (%s, %s)", (user_id, rid))
         
         conn.commit()
-        flash('✅ Configuración de usuario actualizada correctamente', 'success')
+        flash(' Configuración de usuario actualizada correctamente', 'success')
     except Exception as e:
         if conn: conn.rollback()
-        flash(f'❌ Error: {str(e)}', 'danger')
+        flash(f' Error: {str(e)}', 'danger')
     finally:
         if cursor: cursor.close()
         if conn: conn.close()

@@ -1,6 +1,0 @@
-# Ignorar backups de la base de datos
-backups/*.sql
-backups/*.zip
-
-# Mantener el directorio
-!backups/.gitkeep

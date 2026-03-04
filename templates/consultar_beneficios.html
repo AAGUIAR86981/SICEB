@@ -1,0 +1,269 @@
+{% extends 'layout.html' %}
+
+{% block title %}Consulta de Beneficios por Empleado{% endblock %}
+
+{% block extra_css %}
+<style>
+    .filter-card {
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        border: none;
+        border-radius: 15px;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+    }
+
+    .results-card {
+        border-radius: 15px;
+        overflow: hidden;
+        border: none;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+    }
+
+    .table thead {
+        background: linear-gradient(90deg, #4e73df 0%, #224abe 100%);
+        color: white;
+    }
+
+    .badge-recibio {
+        background-color: #28a745;
+        color: white;
+        padding: 0.5em 1em;
+        border-radius: 50px;
+    }
+
+    .badge-no-recibio {
+        background-color: #dc3545;
+        color: white;
+        padding: 0.5em 1em;
+        border-radius: 50px;
+    }
+
+    .product-tag {
+        background-color: #f1f3f5;
+        border: 1px solid #dee2e6;
+        padding: 2px 8px;
+        border-radius: 4px;
+        margin-right: 5px;
+        display: inline-block;
+        font-size: 0.85em;
+    }
+
+    .search-btn {
+        transition: all 0.3s ease;
+    }
+
+    /* Reducción de tamaño de tabla */
+    .table-custom {
+        font-size: 0.9rem;
+    }
+
+    .table-custom td {
+        padding: 0.4rem 0.6rem;
+        vertical-align: middle;
+    }
+
+    .table-custom thead th {
+        padding: 0.6rem;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    /* Estilos para impresión */
+    @media print {
+
+        .filter-card,
+        .btn-group,
+        .navbar,
+        .search-btn,
+        .btn-outline-secondary,
+        .card-header .d-flex {
+            display: none !important;
+        }
+
+        .container {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .results-card {
+            box-shadow: none !important;
+            border: 1px solid #ddd !important;
+        }
+
+        .table-responsive {
+            overflow: visible !important;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4 pb-5 px-4">
+    <div class="row mb-3">
+        <div class="col-12 text-center">
+            <h3 class="fw-bold text-primary mb-1">
+                <i class="fas fa-search-dollar me-2"></i>Consulta de Beneficios Individuales
+            </h3>
+            <p class="text-muted small">Filtra y exporta el historial de entregas</p>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="card filter-card mb-3 p-3">
+        <form method="GET" action="{{ url_for('provision.consultar_beneficios') }}"
+            class="row g-2 justify-content-center">
+            <div class="col-md-2">
+                <label class="form-label small fw-bold mb-1">Cédula</label>
+                <input type="text" name="cedula" class="form-control form-control-sm" placeholder="Ej: 12345678"
+                    value="{{ filters.cedula or '' }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold mb-1">Nombre</label>
+                <input type="text" name="nombre" class="form-control form-control-sm" placeholder="Nombre/Apellido"
+                    value="{{ filters.nombre or '' }}">
+            </div>
+            <div class="col-md-1">
+                <label class="form-label small fw-bold mb-1">Semana</label>
+                <input type="number" name="semana" class="form-control form-control-sm" placeholder="Sem"
+                    value="{{ filters.semana or '' }}">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold mb-1">Nómina</label>
+                <select name="tipo_nomina" class="form-select form-select-sm">
+                    <option value="">Todas</option>
+                    <option value="1" {% if filters.tipo_nomina=='1' %}selected{% endif %}>Semanal</option>
+                    <option value="2" {% if filters.tipo_nomina=='2' %}selected{% endif %}>Quincenal</option>
+                </select>
+            </div>
+            <div class="col-md-1">
+                <label class="form-label small fw-bold mb-1">Estatus</label>
+                <select name="recibio" class="form-select form-select-sm">
+                    <option value="">Todos</option>
+                    <option value="1" {% if filters.recibio=='1' %}selected{% endif %}>Recibió</option>
+                    <option value="0" {% if filters.recibio=='0' %}selected{% endif %}>No...</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small fw-bold mb-1">Fecha</label>
+                <input type="date" name="fecha" class="form-control form-control-sm" value="{{ filters.fecha or '' }}">
+            </div>
+            <div class="col-md-2 d-flex align-items-end gap-1">
+                <button type="submit" class="btn btn-primary btn-sm px-3 search-btn">
+                    <i class="fas fa-search me-1"></i>Filtrar
+                </button>
+                <a href="{{ url_for('provision.consultar_beneficios') }}" class="btn btn-outline-secondary btn-sm"
+                    title="Limpiar">
+                    <i class="fas fa-sync-alt"></i>
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Resultados -->
+    <div class="card results-card">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center py-2 px-3">
+            <h6 class="mb-0 text-secondary">
+                <i class="fas fa-list me-2"></i>Registros: <strong>{{ reporte|length }}</strong>
+            </h6>
+            {% if reporte %}
+            <div class="btn-group">
+                <a href="{{ url_for('provision.exportar_reporte_beneficiarios', **request.args) }}"
+                    class="btn btn-success btn-sm">
+                    <i class="fas fa-file-excel me-1"></i>Excel
+                </a>
+                <button class="btn btn-danger btn-sm" onclick="window.print()">
+                    <i class="fas fa-file-pdf me-1"></i>PDF
+                </button>
+                <button class="btn btn-info btn-sm text-white" onclick="window.print()">
+                    <i class="fas fa-print me-1"></i>Imprimir
+                </button>
+            </div>
+            {% endif %}
+        </div>
+        <div class="card-body p-0">
+            {% if reporte %}
+            <div class="table-responsive">
+                <table class="table table-hover mb-0 table-sm table-custom">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="ps-3">Empleado</th>
+                            <th>Cédula</th>
+                            <th>Depto</th>
+                            <th>Estatus</th>
+                            <th>Productos</th>
+                            <th>Fecha/Hora</th>
+                            <th class="pe-3 text-center">Tipo</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in reporte %}
+                        <tr>
+                            <td class="ps-3 fw-bold">{{ item.nombre_completo }}</td>
+                            <td>{{ item.cedula }}</td>
+                            <td><small class="text-muted">{{ item.departamento or 'N/A' }}</small></td>
+                            <td>
+                                {% if item.recibio %}
+                                <span class="badge badge-recibio" style="font-size: 0.75rem; padding: 0.3rem 0.6rem;">
+                                    <i class="fas fa-check-circle me-1"></i> SI
+                                </span>
+                                {% else %}
+                                <span class="badge badge-no-recibio"
+                                    style="font-size: 0.75rem; padding: 0.3rem 0.6rem;">
+                                    <i class="fas fa-times-circle me-1"></i> NO
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="d-flex flex-wrap gap-1">
+                                    {% for prod in item.productos_list %}
+                                    <span class="product-tag py-0 px-1" style="font-size: 0.7rem;">
+                                        {{ prod[1] }} {{ prod[0] }}
+                                    </span>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td>
+                                <div class="small fw-bold">{{ item.fecha_entrega.strftime('%d/%m/%y') }}</div>
+                                <div class="small text-muted" style="font-size: 0.7rem;">{{
+                                    item.fecha_entrega.strftime('%H:%M') }}</div>
+                            </td>
+                            <td class="pe-3 text-center">
+                                <span class="badge bg-secondary text-white" style="font-size: 0.7rem;">S{{ item.semana
+                                    }}</span>
+                                <div class="text-muted" style="font-size: 0.65rem;">{{ item.tipo_nomina }}</div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-4">
+                <i class="fas fa-info-circle fa-2x text-light mb-2"></i>
+                <p class="text-muted small">Sin resultados para estos filtros.</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Animación suave al cargar resultados
+    document.addEventListener('DOMContentLoaded', function () {
+        const rows = document.querySelectorAll('tbody tr');
+        rows.forEach((row, index) => {
+            row.style.opacity = '0';
+            row.style.transform = 'translateY(10px)';
+            row.style.transition = 'all 0.3s ease';
+            setTimeout(() => {
+                row.style.opacity = '1';
+                row.style.transform = 'translateY(0)';
+            }, 50 * index);
+        });
+    });
+</script>
+{% endblock %}

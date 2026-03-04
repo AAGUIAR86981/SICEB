@@ -24,58 +24,50 @@ class Employee:
             conn = get_db_connection()
             cursor = conn.cursor(dictionary=True)
             
-            # Query ajustado estrictamente a las columnas VERIFICADAS que existen
+            # Query ajustado para usar JOINs con catálogos (3NF)
             query = """
                 SELECT 
-                    id,
-                    id_empleado,
-                    cedula,
-                    nombre,
-                    apellido,
-                    departamento,
-                    tipoNomina,
-                    boolValidacion
-                FROM empleados
+                    e.id,
+                    e.id_empleado,
+                    e.cedula,
+                    e.nombre,
+                    e.apellido,
+                    cd.nombre as departamento_nombre,
+                    ctn.nombre as tipo_nomina_nombre,
+                    e.departamento_id,
+                    e.tipo_nomina_id as tipoNomina,
+                    e.boolValidacion
+                FROM empleados e
+                LEFT JOIN cat_departamentos cd ON e.departamento_id = cd.id
+                LEFT JOIN cat_tipos_nomina ctn ON e.tipo_nomina_id = ctn.id
                 WHERE 1=1
             """
             params = []
             
             if search:
-                query += " AND (nombre LIKE %s OR apellido LIKE %s OR cedula LIKE %s OR departamento LIKE %s)"
+                query += " AND (e.nombre LIKE %s OR e.apellido LIKE %s OR e.cedula LIKE %s OR cd.nombre LIKE %s)"
                 search_val = f"%{search}%"
                 params.extend([search_val, search_val, search_val, search_val])
             
             if tipo_nomina:
-                query += " AND tipoNomina = %s"
+                query += " AND e.tipo_nomina_id = %s"
                 params.append(tipo_nomina)
                 
             if estado is not None:
-                query += " AND boolValidacion = %s"
+                query += " AND e.boolValidacion = %s"
                 params.append(1 if estado == 'activo' else 0)
                 
             # Formatear LIMIT/OFFSET directamente
-            query += f" ORDER BY id DESC LIMIT {int(limit)} OFFSET {int(offset)}"
+            query += f" ORDER BY e.id DESC LIMIT {int(limit)} OFFSET {int(offset)}"
             
             cursor.execute(query, tuple(params))
             empleados = cursor.fetchall()
             
-            # Procesar resultados
+            # Procesar resultados para compatibilidad
             for emp in empleados:
-                # El campo 'departamento' ya contiene el nombre
-                emp['departamento_nombre'] = emp.get('departamento', 'Sin departamento')
-                
-                # Mapear tipoNomina (int) a nombre
-                tn = emp.get('tipoNomina')
-                if tn == 1:
-                    emp['tipo_nomina_nombre'] = 'Semanal'
-                elif tn == 2:
-                    emp['tipo_nomina_nombre'] = 'Quincenal'
-                else:
-                    emp['tipo_nomina_nombre'] = 'Otro'
-                    
-                # Alias para compatibilidad con plantilla
-                emp['departamento_id'] = 0 
-                emp['tipo_nomina_id'] = tn
+                # Alias para compatibilidad con plantillas antiguas
+                emp['departamento'] = emp['departamento_nombre']
+                emp['tipo_nomina_id'] = emp['tipoNomina']
                 
                 # Campos faltantes en DB pero esperados por código (opcional)
                 emp['fecha_ingreso'] = None
@@ -133,21 +125,24 @@ class Employee:
         try:
             conn = get_db_connection()
             cursor = conn.cursor(dictionary=True)
-            # Solo columnas existentes
+            # Query 3NF con JOINs
             query = """
                 SELECT 
-                    id, id_empleado, cedula, nombre, apellido, 
-                    departamento, tipoNomina, boolValidacion 
-                FROM empleados WHERE id = %s
+                    e.id, e.id_empleado, e.cedula, e.nombre, e.apellido, 
+                    cd.nombre as departamento_nombre, e.departamento_id,
+                    e.tipo_nomina_id as tipoNomina, e.boolValidacion,
+                    ctn.nombre as tipo_nomina_nombre
+                FROM empleados e
+                LEFT JOIN cat_departamentos cd ON e.departamento_id = cd.id
+                LEFT JOIN cat_tipos_nomina ctn ON e.tipo_nomina_id = ctn.id
+                WHERE e.id = %s
             """
             cursor.execute(query, (employee_id,))
             emp = cursor.fetchone()
             
             if emp:
-                emp['departamento_nombre'] = emp.get('departamento')
-                tn = emp.get('tipoNomina')
-                emp['tipo_nomina_nombre'] = 'Semanal' if tn == 1 else ('Quincenal' if tn == 2 else 'Otro')
-                emp['tipo_nomina_id'] = tn
+                emp['departamento'] = emp['departamento_nombre']
+                emp['tipo_nomina_id'] = emp['tipoNomina']
                 
             return emp
         except Exception as e:
@@ -169,19 +164,31 @@ class Employee:
             departamento_nombre = data['departamento']
             tipo_nomina = int(data.get('tipoNomina', 1))
             
-            # Insertar solo en columnas existentes
+            # Obtener o crear ID del departamento a partir del nombre (mantiene funcionalidad UI)
+            departamento_id = data.get('departamento_id')
+            if not departamento_id and data.get('departamento'):
+                departamento_id = Employee.get_or_create_department(data['departamento'])
+            
+            tipo_nomina_id = int(data.get('tipoNomina', 1))
+            
+            # Insertar en columnas normalizadas y mantener legacy por seguridad
             query = """
-                INSERT INTO empleados (id_empleado, cedula, nombre, apellido, departamento, tipoNomina, boolValidacion)
-                VALUES (%s, %s, %s, %s, %s, %s, %s)
+                INSERT INTO empleados (id_empleado, cedula, nombre, apellido, departamento_id, tipo_nomina_id, boolValidacion, departamento, tipoNomina)
+                VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
+            # Obtenemos el nombre final del departamento para la columna legacy
+            dept_name = data.get('departamento')
+            
             cursor.execute(query, (
                 data['id_empleado'],
                 data['cedula'],
                 data['nombre'],
                 data['apellido'],
-                departamento_nombre,
-                tipo_nomina,
-                data.get('boolValidacion', 1)
+                departamento_id,
+                tipo_nomina_id,
+                data.get('boolValidacion', 1),
+                dept_name,
+                tipo_nomina_id
             ))
             conn.commit()
             return cursor.lastrowid
@@ -214,11 +221,23 @@ class Employee:
             departamento_nombre = data['departamento']
             tipo_nomina = int(data['tipoNomina'])
 
+            # Obtener o crear ID del departamento (mantiene funcionalidad UI)
+            departamento_id = data.get('departamento_id')
+            if not departamento_id and data.get('departamento'):
+                departamento_id = Employee.get_or_create_department(data['departamento'])
+            
+            tipo_nomina_id = int(data['tipoNomina'])
+            from utils.helpers import get_client_ip
+            ip = get_client_ip()
+            cursor.execute("SET @client_ip = %s", (ip,))
+
             query = """
                 UPDATE empleados 
                 SET id_empleado = %s, cedula = %s, nombre = %s, apellido = %s, 
-                    departamento = %s, tipoNomina = %s, 
-                    boolValidacion = %s
+                    departamento_id = %s, tipo_nomina_id = %s, 
+                    boolValidacion = %s,
+                    departamento = %s,
+                    tipoNomina = %s
                 WHERE id = %s
             """
             cursor.execute(query, (
@@ -226,9 +245,11 @@ class Employee:
                 data['cedula'],
                 data['nombre'],
                 data['apellido'],
-                departamento_nombre,
-                tipo_nomina,
+                departamento_id,
+                tipo_nomina_id,
                 data['boolValidacion'],
+                dept_name,
+                tipo_nomina_id,
                 employee_id
             ))
             conn.commit()
@@ -244,6 +265,35 @@ class Employee:
                 return 'DUPLICATE'
                 
             return False
+        finally:
+            if cursor: cursor.close()
+            if conn: conn.close()
+
+    @staticmethod
+    def get_or_create_department(name):
+        """Busca el ID de un departamento por nombre o lo crea si no existe"""
+        if not name: return None
+        name = name.strip()
+        conn = None
+        cursor = None
+        try:
+            conn = get_db_connection()
+            cursor = conn.cursor()
+            
+            # Buscar ID
+            cursor.execute("SELECT id FROM cat_departamentos WHERE nombre = %s", (name,))
+            res = cursor.fetchone()
+            if res:
+                return res[0]
+            
+            # Si no existe, crear
+            cursor.execute("INSERT INTO cat_departamentos (nombre) VALUES (%s)", (name,))
+            new_id = cursor.lastrowid
+            conn.commit()
+            return new_id
+        except Exception as e:
+            logger.error(f"Error in get_or_create_department: {e}")
+            return None
         finally:
             if cursor: cursor.close()
             if conn: conn.close()
@@ -268,13 +318,14 @@ class Employee:
 
     @staticmethod
     def get_unique_departments():
+        """Obtiene todos los departamentos del catálogo (ID y Nombre)"""
         conn = None
         cursor = None
         try:
             conn = get_db_connection()
-            cursor = conn.cursor()
-            cursor.execute("SELECT DISTINCT departamento FROM empleados WHERE departamento IS NOT NULL ORDER BY departamento")
-            return [row[0] for row in cursor.fetchall()]
+            cursor = conn.cursor(dictionary=True)
+            cursor.execute("SELECT id, nombre FROM cat_departamentos WHERE activo = TRUE ORDER BY nombre")
+            return cursor.fetchall()
         except Exception as e:
             logger.error(f"Error in get_unique_departments: {e}")
             return []
@@ -291,18 +342,18 @@ class Employee:
             cursor = conn.cursor()
             
             # 1. Total Count
-            cursor.execute("SELECT COUNT(*) FROM empleados WHERE tipoNomina = %s", (tipo_nomina,))
+            cursor.execute("SELECT COUNT(*) FROM empleados WHERE tipo_nomina_id = %s", (tipo_nomina,))
             total = cursor.fetchone()[0]
             
             # 2. Active Count
-            cursor.execute("SELECT COUNT(*) FROM empleados WHERE tipoNomina = %s AND boolValidacion = 1", (tipo_nomina,))
+            cursor.execute("SELECT COUNT(*) FROM empleados WHERE tipo_nomina_id = %s AND boolValidacion = 1", (tipo_nomina,))
             activos = cursor.fetchone()[0]
             
             # 3. Inactive Count (Calculated)
             inactivos = total - activos
             
             # 4. Total Departments Count
-            cursor.execute("SELECT COUNT(DISTINCT departamento) FROM empleados WHERE tipoNomina = %s AND departamento IS NOT NULL", (tipo_nomina,))
+            cursor.execute("SELECT COUNT(DISTINCT departamento_id) FROM empleados WHERE tipo_nomina_id = %s AND departamento_id IS NOT NULL", (tipo_nomina,))
             total_depts = cursor.fetchone()[0]
             
             return (int(total), int(activos), int(inactivos), int(total_depts))
@@ -324,17 +375,17 @@ class Employee:
             conn = get_db_connection()
             cursor = conn.cursor(dictionary=False)
             
-            # Query ajustado para retornar (Departamento, Activos, Inactivos)
-            # COINCIDIR con provision.py: depto[0]=nombre, depto[1]=activos, depto[2]=inactivos
+            # Query 3NF con JOIN para obtener nombres reales
             cursor.execute("""
                 SELECT 
-                    departamento,
-                    CAST(SUM(CASE WHEN boolValidacion = 1 THEN 1 ELSE 0 END) AS UNSIGNED) as activos,
-                    CAST(SUM(CASE WHEN boolValidacion = 0 THEN 1 ELSE 0 END) AS UNSIGNED) as inactivos
-                FROM empleados 
-                WHERE tipoNomina = %s AND departamento IS NOT NULL
-                GROUP BY departamento
-                ORDER BY departamento
+                    cd.nombre,
+                    CAST(SUM(CASE WHEN e.boolValidacion = 1 THEN 1 ELSE 0 END) AS UNSIGNED) as activos,
+                    CAST(SUM(CASE WHEN e.boolValidacion = 0 THEN 1 ELSE 0 END) AS UNSIGNED) as inactivos
+                FROM empleados e
+                JOIN cat_departamentos cd ON e.departamento_id = cd.id
+                WHERE e.tipo_nomina_id = %s
+                GROUP BY e.departamento_id
+                ORDER BY cd.nombre
             """, (tipo_nomina,))
             
             rows = cursor.fetchall()

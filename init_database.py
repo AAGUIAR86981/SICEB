@@ -19,8 +19,155 @@ def get_db_connection():
         )
         return connection
     except mariadb.Error as err:
-        print(f"Error conectando a la base de datos: {err}")
-        return None
+        if err.errno == 1049:  # No existe la base de datos
+            try:
+                # Conectar sin base de datos para crearla
+                conn = mariadb.connect(
+                    host=os.getenv("DB_HOST", "localhost"),
+                    port=int(os.getenv("DB_PORT", 3306)),
+                    user=os.getenv("DB_USER", "root"),
+                    password=os.getenv("DB_PASSWORD", "")
+                )
+                cursor = conn.cursor()
+                db_name = os.getenv("DB_NAME", "lider_pollo")
+                print(f"Creando base de datos {db_name}...")
+                cursor.execute(f"CREATE DATABASE IF NOT EXISTS {db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_bin")
+                cursor.close()
+                conn.close()
+                
+                # Intentar de nuevo
+                return mariadb.connect(
+                    host=os.getenv("DB_HOST", "localhost"),
+                    port=int(os.getenv("DB_PORT", 3306)),
+                    user=os.getenv("DB_USER", "root"),
+                    password=os.getenv("DB_PASSWORD", ""),
+                    database=db_name
+                )
+            except mariadb.Error as err2:
+                print(f"Error creando la base de datos: {err2}")
+                return None
+        else:
+            print(f"Error conectando a la base de datos: {err}")
+            return None
+
+def repair_all_schemas(cursor):
+    """Repara el esquema de todas las tablas si existen con nombres de columna antiguos o columnas faltantes"""
+    # 1. Reparar tabla 'users'
+    try:
+        cursor.execute("SHOW COLUMNS FROM users")
+        columns = [row[0] for row in cursor.fetchall()]
+        if 'active' in columns and 'activo' not in columns:
+            print("  ! Reparando columna 'active' -> 'activo' en 'users'")
+            cursor.execute("ALTER TABLE users CHANGE active activo BOOLEAN DEFAULT TRUE")
+        if 'activo' not in columns:
+            print("  ! Añadiendo columna 'activo' a 'users'")
+            cursor.execute("ALTER TABLE users ADD COLUMN activo BOOLEAN DEFAULT TRUE")
+            
+        if 'last_login' not in columns:
+            print("  ! Añadiendo columna 'last_login' a 'users'")
+            cursor.execute("ALTER TABLE users ADD COLUMN last_login TIMESTAMP NULL AFTER created_at")
+            
+        if 'userAlias' in columns and 'username' in columns:
+            print("  ! Reparando estructura de 'username' en 'users'")
+            cursor.execute("ALTER TABLE users DROP COLUMN username")
+            cursor.execute("ALTER TABLE users CHANGE userAlias username VARCHAR(50) NOT NULL UNIQUE")
+        elif 'userAlias' in columns:
+            print("  ! Renombrando 'userAlias' a 'username' en 'users'")
+            cursor.execute("ALTER TABLE users CHANGE userAlias username VARCHAR(50) NOT NULL UNIQUE")
+    except mariadb.Error as e:
+        if e.errno != 1146: print(f"  ⚠️ Error users: {e}")
+
+    # 2. Reparar otras tablas que necesitan 'activo'
+    tables_needing_activo = ['cat_departamentos', 'cat_tipos_nomina', 'catalogo_productos', 'combos']
+    for table in tables_needing_activo:
+        try:
+            cursor.execute(f"SHOW COLUMNS FROM {table}")
+            columns = [row[0] for row in cursor.fetchall()]
+            if 'activo' not in columns:
+                print(f"  ! Añadiendo columna 'activo' a '{table}'")
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN activo BOOLEAN DEFAULT TRUE")
+        except mariadb.Error as e:
+            if e.errno != 1146: print(f"  ⚠️ Error {table}: {e}")
+
+    # 3. Reparar tabla 'empleados' para 3NF
+    try:
+        cursor.execute("SHOW COLUMNS FROM empleados")
+        columns = [row[0] for row in cursor.fetchall()]
+        if 'departamento_id' not in columns:
+            print("  ! Migrando 'empleados' a 3NF (añadiendo departamento_id)")
+            cursor.execute("ALTER TABLE empleados ADD COLUMN departamento_id INT AFTER departamento")
+            # Intentar poblar a partir del nombre si existe
+            cursor.execute("""
+                UPDATE empleados e
+                JOIN cat_departamentos cd ON e.departamento = cd.nombre
+                SET e.departamento_id = cd.id
+            """)
+        
+        if 'tipo_nomina_id' not in columns:
+            print("  ! Migrando 'empleados' a 3NF (añadiendo tipo_nomina_id)")
+            cursor.execute("ALTER TABLE empleados ADD COLUMN tipo_nomina_id INT AFTER tipoNomina")
+            # Mapping legacy tipoNomina (1=Semanal, 2=Quincenal)
+            cursor.execute("UPDATE empleados SET tipo_nomina_id = tipoNomina WHERE tipoNomina IN (1, 2)")
+
+        # Verificar FKs
+        cursor.execute("""
+            SELECT CONSTRAINT_NAME FROM information_schema.REFERENTIAL_CONSTRAINTS 
+            WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'empleados'
+        """)
+        constraints = [row[0] for row in cursor.fetchall()]
+        
+        if 'fk_empleados_departamento' not in constraints:
+            print("  ! Añadiendo FK para departamentos en 'empleados'")
+            cursor.execute("ALTER TABLE empleados ADD CONSTRAINT fk_empleados_departamento FOREIGN KEY (departamento_id) REFERENCES cat_departamentos(id)")
+        
+        if 'fk_empleados_nomina' not in constraints:
+            print("  ! Añadiendo FK para nómina en 'empleados'")
+            cursor.execute("ALTER TABLE empleados ADD CONSTRAINT fk_empleados_nomina FOREIGN KEY (tipo_nomina_id) REFERENCES cat_tipos_nomina(id)")
+
+    except mariadb.Error as e:
+        if e.errno != 1146: print(f"  ⚠️ Error reparando tabla empleados: {e}")
+
+    # 4. Reparar tablas de logs para incluir ip_address
+    log_tables = ['user_activities', 'empleadosaudit', 'provisiones_historial', 'users']
+    for table in log_tables:
+        try:
+            cursor.execute(f"SHOW COLUMNS FROM {table}")
+            columns = [row[0] for row in cursor.fetchall()]
+            column_to_add = 'ip_address' if table != 'users' else 'last_ip'
+            if column_to_add not in columns:
+                print(f"  ! Añadiendo columna '{column_to_add}' a '{table}'")
+                cursor.execute(f"ALTER TABLE {table} ADD COLUMN {column_to_add} VARCHAR(45)")
+        except mariadb.Error as e:
+            if e.errno != 1146: print(f"  ⚠️ Error reparando IP en {table}: {e}")
+
+    # 5. Añadir llaves foráneas faltantes (Integridad referencial sin afectar datos)
+    try:
+        # FK para user_activities
+        cursor.execute("""
+            SELECT CONSTRAINT_NAME FROM information_schema.REFERENTIAL_CONSTRAINTS 
+            WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'user_activities'
+        """)
+        constraints_ua = [row[0] for row in cursor.fetchall()]
+        if 'fk_user_activities_user' not in constraints_ua:
+            print("  ! Añadiendo FK 'fk_user_activities_user' en 'user_activities'")
+            # Si hay IDs huérfanos, ponerlos a NULL antes de la FK
+            cursor.execute("UPDATE user_activities SET user_id = NULL WHERE user_id NOT IN (SELECT id FROM users)")
+            cursor.execute("ALTER TABLE user_activities ADD CONSTRAINT fk_user_activities_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL")
+            
+        # FK para provisiones_historial
+        cursor.execute("""
+            SELECT CONSTRAINT_NAME FROM information_schema.REFERENTIAL_CONSTRAINTS 
+            WHERE CONSTRAINT_SCHEMA = DATABASE() AND TABLE_NAME = 'provisiones_historial'
+        """)
+        constraints_ph = [row[0] for row in cursor.fetchall()]
+        if 'fk_provisiones_hist_user' not in constraints_ph:
+            print("  ! Añadiendo FK 'fk_provisiones_hist_user' en 'provisiones_historial'")
+            # Si hay IDs huérfanos, ponerlos a NULL antes de la FK
+            cursor.execute("UPDATE provisiones_historial SET usuario_id = NULL WHERE usuario_id NOT IN (SELECT id FROM users)")
+            cursor.execute("ALTER TABLE provisiones_historial ADD CONSTRAINT fk_provisiones_hist_user FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE SET NULL")
+            
+    except mariadb.Error as e:
+        print(f"  ⚠️ Error reparando llaves foráneas: {e}")
 
 def create_all_tables():
     """Crea todas las tablas del sistema SICEB"""
@@ -33,11 +180,14 @@ def create_all_tables():
     
     try:
         print("=" * 60)
-        print("INICIALIZANDO BASE DE DATOS SICEB")
+        print("INICIALIZANDO/REPARANDO BASE DE DATOS SICEB")
         print("=" * 60)
         
         # configuramos collation para la sesión
         cursor.execute("SET collation_connection = 'utf8mb4_bin'")
+
+        # REPARACIÓN DE ESQUEMA UNIVERSAL
+        repair_all_schemas(cursor)
 
         # ============================================
         # 1. TABLAS DE CATÁLOGOS (3NF)
@@ -83,16 +233,15 @@ def create_all_tables():
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id INT AUTO_INCREMENT PRIMARY KEY,
-            name VARCHAR(100) NOT NULL,
-            lastname VARCHAR(100) NOT NULL,
-            userAlias VARCHAR(50) NOT NULL UNIQUE,
-            username VARCHAR(50) AS (userAlias) VIRTUAL,
-            password VARCHAR(255) NOT NULL,
-            isAdmin TINYINT DEFAULT 0,
+            username VARCHAR(50) NOT NULL UNIQUE,
             email VARCHAR(255),
+            password VARCHAR(255) NULL,
+            isAdmin TINYINT DEFAULT 0,
+            name VARCHAR(100),
+            lastname VARCHAR(100),
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             last_login TIMESTAMP NULL,
-            active BOOLEAN DEFAULT TRUE
+            activo BOOLEAN DEFAULT TRUE
         ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin
         """)
         
@@ -148,15 +297,21 @@ def create_all_tables():
             nombre VARCHAR(100) NOT NULL,
             apellido VARCHAR(100) NOT NULL,
             departamento VARCHAR(100),
+            departamento_id INT,
             tipoNomina INT NOT NULL DEFAULT 1,
+            tipo_nomina_id INT,
             id_empleado INT NOT NULL,
             boolValidacion TINYINT DEFAULT 1,
             fecha_ingreso DATE,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
             UNIQUE KEY unique_emp_ced (id_empleado, cedula),
+            FOREIGN KEY (departamento_id) REFERENCES cat_departamentos(id),
+            FOREIGN KEY (tipo_nomina_id) REFERENCES cat_tipos_nomina(id),
             INDEX idx_departamento (departamento),
+            INDEX idx_departamento_id (departamento_id),
             INDEX idx_tipo_nomina (tipoNomina),
+            INDEX idx_tipo_nomina_id (tipo_nomina_id),
             INDEX idx_validacion (boolValidacion),
             INDEX idx_cedula (cedula)
         ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin
@@ -201,26 +356,8 @@ def create_all_tables():
         # ============================================
         print("\n[5/7] Creando tablas de provisiones...")
         
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS provision_configs (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            week_number VARCHAR(50) NOT NULL,
-            provision_type ENUM('semanal', 'quincenal') NOT NULL,
-            active BOOLEAN DEFAULT TRUE,
-            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            INDEX idx_type_week (provision_type, week_number)
-        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin
-        """)
+
         
-        cursor.execute("""
-        CREATE TABLE IF NOT EXISTS provision_items (
-            id INT AUTO_INCREMENT PRIMARY KEY,
-            provision_config_id INT NOT NULL,
-            product_name VARCHAR(100) NOT NULL,
-            quantity INT NOT NULL,
-            FOREIGN KEY (provision_config_id) REFERENCES provision_configs(id) ON DELETE CASCADE
-        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin
-        """)
         
         cursor.execute("""
         CREATE TABLE IF NOT EXISTS provisiones_historial (
@@ -236,7 +373,8 @@ def create_all_tables():
             usuario_nombre VARCHAR(100),
             fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             INDEX idx_fecha (fecha_creacion),
-            INDEX idx_tipo_semana (tipo_nomina, semana)
+            INDEX idx_tipo_semana (tipo_nomina, semana),
+            CONSTRAINT fk_provisiones_hist_user FOREIGN KEY (usuario_id) REFERENCES users(id) ON DELETE SET NULL
         ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin
         """)
         
@@ -248,6 +386,24 @@ def create_all_tables():
             cantidad INT NOT NULL,
             FOREIGN KEY (provision_id) REFERENCES provisiones_historial(id) ON DELETE CASCADE,
             INDEX idx_provision (provision_id)
+        ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin
+        """)
+
+        cursor.execute("""
+        CREATE TABLE IF NOT EXISTS provision_beneficiarios (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            provision_id INT NOT NULL,
+            empleado_id INT NOT NULL,
+            cedula INT NOT NULL,
+            nombre_completo VARCHAR(255) NOT NULL,
+            departamento VARCHAR(100),
+            recibio BOOLEAN DEFAULT TRUE,
+            fecha_entrega TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (provision_id) REFERENCES provisiones_historial(id) ON DELETE CASCADE,
+            FOREIGN KEY (empleado_id) REFERENCES empleados(id) ON DELETE CASCADE,
+            INDEX idx_provision_ben (provision_id),
+            INDEX idx_cedula_ben (cedula),
+            INDEX idx_recibio (recibio)
         ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin
         """)
         
@@ -266,7 +422,8 @@ def create_all_tables():
             activity_type VARCHAR(50),
             activity_details TEXT,
             activity_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            INDEX idx_user_date (user_id, activity_date)
+            INDEX idx_user_date (user_id, activity_date),
+            CONSTRAINT fk_user_activities_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
         ) CHARACTER SET utf8mb4 COLLATE utf8mb4_bin
         """)
 
@@ -296,24 +453,24 @@ def create_all_tables():
         FOR EACH ROW
         BEGIN
             IF OLD.nombre != NEW.nombre THEN
-                INSERT INTO empleadosaudit (employee_id, field_name, old_value, new_value)
-                VALUES (OLD.id, 'nombre', OLD.nombre, NEW.nombre);
+                INSERT INTO empleadosaudit (employee_id, field_name, old_value, new_value, ip_address)
+                VALUES (OLD.id, 'nombre', OLD.nombre, NEW.nombre, @client_ip);
             END IF;
             IF OLD.apellido != NEW.apellido THEN
-                INSERT INTO empleadosaudit (employee_id, field_name, old_value, new_value)
-                VALUES (OLD.id, 'apellido', OLD.apellido, NEW.apellido);
+                INSERT INTO empleadosaudit (employee_id, field_name, old_value, new_value, ip_address)
+                VALUES (OLD.id, 'apellido', OLD.apellido, NEW.apellido, @client_ip);
             END IF;
             IF OLD.departamento != NEW.departamento THEN
-                INSERT INTO empleadosaudit (employee_id, field_name, old_value, new_value)
-                VALUES (OLD.id, 'departamento', OLD.departamento, NEW.departamento);
+                INSERT INTO empleadosaudit (employee_id, field_name, old_value, new_value, ip_address)
+                VALUES (OLD.id, 'departamento', OLD.departamento, NEW.departamento, @client_ip);
             END IF;
             IF OLD.cedula != NEW.cedula THEN
-                INSERT INTO empleadosaudit (employee_id, field_name, old_value, new_value)
-                VALUES (OLD.id, 'cedula', CAST(OLD.cedula AS CHAR), CAST(NEW.cedula AS CHAR));
+                INSERT INTO empleadosaudit (employee_id, field_name, old_value, new_value, ip_address)
+                VALUES (OLD.id, 'cedula', CAST(OLD.cedula AS CHAR), CAST(NEW.cedula AS CHAR), @client_ip);
             END IF;
             IF OLD.tipoNomina != NEW.tipoNomina THEN
-                INSERT INTO empleadosaudit (employee_id, field_name, old_value, new_value)
-                VALUES (OLD.id, 'tipoNomina', CAST(OLD.tipoNomina AS CHAR), CAST(NEW.tipoNomina AS CHAR));
+                INSERT INTO empleadosaudit (employee_id, field_name, old_value, new_value, ip_address)
+                VALUES (OLD.id, 'tipoNomina', CAST(OLD.tipoNomina AS CHAR), CAST(NEW.tipoNomina AS CHAR), @client_ip);
             END IF;
         END;
         """
@@ -326,8 +483,8 @@ def create_all_tables():
             CREATE TRIGGER after_empleado_update
             AFTER UPDATE ON empleados
             FOR EACH ROW
-            INSERT INTO empleadosaudit (employee_id, field_name, old_value, new_value)
-            VALUES (OLD.id, 'update', 'multiple', 'change');
+            INSERT INTO empleadosaudit (employee_id, field_name, old_value, new_value, ip_address)
+            VALUES (OLD.id, 'update', 'multiple', 'change', @client_ip);
             """)
 
         # Vista de resumen de auditoría
@@ -400,8 +557,8 @@ def insert_initial_data():
         if not row:
             hashed_pw = pbkdf2_sha256.hash("Admin123.")
             cursor.execute("""
-                INSERT INTO users (name, lastname, username, password, isAdmin, activo)
-                VALUES ('Admin', 'Principal', 'admin', %s, 1, 1)
+                INSERT INTO users (username, email, password, isAdmin, name, lastname, activo)
+                VALUES ('admin', 'admin@liderpollo.com', %s, 1, 'Admin', 'Principal', 1)
             """, (hashed_pw,))
             user_id = cursor.lastrowid
         else:

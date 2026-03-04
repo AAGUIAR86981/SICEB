@@ -1,0 +1,16 @@
+========================================
+DIAGNÓSTICO DE IPS EN TABLAS
+========================================
+[user_activities]
+  Total registros: 234
+  Registros con IP: 13
+  Registros sin IP: 221
+[empleadosaudit]
+  Total registros: 5
+  Registros con IP: 0
+  Registros sin IP: 5
+[provisiones_historial]
+  Total registros: 8
+  Registros con IP: 0
+  Registros sin IP: 8
+========================================

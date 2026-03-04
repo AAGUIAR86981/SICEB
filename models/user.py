@@ -300,8 +300,9 @@ class User:
             cursor.execute('DELETE FROM user_roles WHERE user_id = %s', (user_id,))
             # Logs (try/except ignored in original, we can check table existence or just try)
             try:
-                cursor.execute('DELETE FROM user_logs WHERE userID = %s', (user_id,))
+                cursor.execute('DELETE FROM user_activities WHERE user_id = %s', (user_id,))
             except: pass
+
             
             # User
             cursor.execute('DELETE FROM users WHERE id = %s', (user_id,))

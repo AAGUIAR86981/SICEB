@@ -21,7 +21,7 @@ def get_user_roles(user_id):
         return [{'id': r[0], 'name': r[1]} for r in roles]
         
     except Exception as e:
-        print(f"⚠️ Error obteniendo roles (continuando): {e}")
+        print(f" Error obteniendo roles (continuando): {e}")
         return []  # Devolver lista vacía en caso de error
     finally:
         if cursor:
@@ -49,7 +49,7 @@ def get_user_permissions(user_id):
         return [p[0] for p in permissions]
         
     except Exception as e:
-        print(f"⚠️ Error obteniendo permisos (continuando): {e}")
+        print(f" Error obteniendo permisos (continuando): {e}")
         return []  # Devolver lista vacía
     finally:
         if cursor:

@@ -49,10 +49,18 @@
             <h1 class="h3 mb-0 text-gray-800">Gestión de Empleados</h1>
             <!--<p class="text-muted">Administra el personal, sus departamentos y estados de validación.</p>-->
         </div>
-        <a href="{{ url_for('employees.create_employee') }}"
-            class="btn btn-primary d-flex align-items-center px-4 py-2 shadow-sm rounded-pill">
-            <i class="fas fa-plus me-2"></i> Ingresar Empleado
-        </a>
+        <div class="d-flex gap-2">
+            <div class="btn-group">
+                <a href="{{ url_for('employees.exportar_empleados', formato='xlsx', search=search, tipo_nomina=tipo_nomina, estado=estado) }}"
+                    class="btn btn-outline-success d-flex align-items-center px-4 py-2 shadow-sm rounded-pill">
+                    <i class="fas fa-file-excel me-2"></i> Exportar
+                </a>
+            </div>
+            <a href="{{ url_for('employees.create_employee') }}"
+                class="btn btn-primary d-flex align-items-center px-4 py-2 shadow-sm rounded-pill">
+                <i class="fas fa-plus me-2"></i> Ingresar Empleado
+            </a>
+        </div>
     </div>
 
     <!-- Filtros y Búsqueda -->

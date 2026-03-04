@@ -1,183 +1,158 @@
 from flask import Blueprint, render_template, session, flash, redirect, url_for, request, Response
 from utils.decorators import login_required, permission_required
+from utils.helpers import dateformat, from_json, log_user_activity, exportar_csv, exportar_excel_generic
 from datetime import datetime
 import logging
-import csv
-import io
 import json
-from openpyxl import Workbook
-from openpyxl.styles import Font, Alignment, PatternFill
+import requests
+import mariadb
 from models.provision import Provision
 from models.employee import Employee
 from models.combos_model import ComboModel
 
 # Configurar logging
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+f_handler = logging.FileHandler('provision_debug.log', mode='w')
+f_handler.setLevel(logging.INFO)
+f_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+f_handler.setFormatter(f_formatter)
+logger.addHandler(f_handler)
 
 provision_bp = Blueprint('provision', __name__)
 
-# Se han eliminado las funciones auxiliares (get_tipo_provision_actual, get_tablas_provision, etc.)
-# porque ahora residen en los modelos Provision y Employee.
-
-
-# =============================================================================
-# RUTA 1: CONFIGURAR PROVISIÓN (SOLO ADMIN Y SUPERVISOR)
-# =============================================================================
-@provision_bp.route('/configurar_provision', methods=['GET', 'POST'])
-@login_required
-@permission_required('create_provisions')  # ← AGREGADO
-def configurar_provision():
-    """Configurar una nueva provisión - Solo admin y supervisor"""
+def check_system_time_integrity():
+    """Retorna True si la hora del sistema coincide con la de internet (+/- 5 min)"""
     try:
-        if request.method == 'POST':
-            semana_prov = request.form.get('SemanaProv')
-            tipo_nomina = request.form.get('Nomina')
-            fecha_inicial = request.form.get('fecha_inicial')
-
-            # Validaciones básicas
-            if not all([semana_prov, tipo_nomina, fecha_inicial]):
-                flash('Todos los campos son obligatorios', 'error')
-                return render_template('configurar_provision.html')
-
-            # Aquí iría tu lógica para guardar la configuración
-            # Por ahora solo redirigimos
-            flash('Configuración de provisión guardada exitosamente', 'success')
-            return redirect(url_for('provision.make_provision'))
-
-        else:
-            # MOSTRAR FORMULARIO DE CONFIGURACIÓN
-            return render_template('configurar_provision.html')
-
+        # Consultar Caracas (usamos HTTP para evitar fallos de SSL por fecha incorrecta si queremos, 
+        # pero mantenemos HTTP por ahora o manejamos la excepción)
+        api_url = "http://worldtimeapi.org/api/timezone/America/Caracas"
+        response = requests.get(api_url, timeout=4)
+        if response.status_code == 200:
+            data = response.json()
+            internet_timestamp = data['unixtime']
+            system_timestamp = datetime.now().timestamp()
+            
+            diff = abs(system_timestamp - internet_timestamp)
+            
+            if diff > 300: # 5 minutos
+                logger.error(f"FRAUDE CRÍTICO DETECTADO: Desfase de {diff} segundos.")
+                return False, f"Intento de manipulación detectado ({diff/60:.1f} min)"
+            
+            return True, "Sincronizado"
+            
+    except requests.exceptions.SSLError:
+        logger.error("Error de SSL detectado: Posible manipulación de fecha.")
+        return False, "Error de Seguridad: Reloj del sistema inválido"
     except Exception as e:
-        logger.error(f"Error en configurar_provision: {e}")
-        flash('Error al configurar la provisión', 'error')
-        return render_template('configurar_provision.html')
+        logger.warning(f"Error de red/API en validación: {e}")
+        # Solo permitimos si es un error de conexión genérico
+        return True, "Verificación omitida (Sin Internet)"
+
+    return True, "Desconocido"
+
+def validar_regla_pollo(productos_list):
+    MAX_POLLO = 4
+    for nombre, cantidad in productos_list:
+        if "POLLO" in nombre.upper():
+            if int(cantidad) > MAX_POLLO:
+                raise ValueError(f"Alerta: No se permiten más de {MAX_POLLO} pollos por empleado.")
 
 
 # =============================================================================
-# RUTA 2: REALIZAR PROVISIÓN (SOLO ADMIN Y SUPERVISOR)
+# RUTA 1: REALIZAR PROVISIÓN (SOLO ADMIN Y SUPERVISOR)
 # =============================================================================
 @provision_bp.route('/provision', methods=['GET', 'POST'])
 @login_required
 @permission_required('create_provisions') 
 def make_provision():
-    """Maneja el formulario y procesamiento de provisiones - Solo admin y supervisor"""
+    if request.method == 'POST':
+        return procesar_provision_post()
+    else:
+        return mostrar_formulario_provision_get()
     if request.method == 'POST':
         return procesar_provision_post()
     else:
         return mostrar_formulario_provision_get()
 
-
 def mostrar_formulario_provision_get():
-    """Muestra el formulario para realizar provisión (GET)"""
     try:
-        # Obtener CONFIGURACIONES disponibles
-        config_semanal, config_quincenal = Provision.get_available_tables()
-        
-        # Determinar periodos actuales
+        # Calcular ambos períodos: semanal (ISO week) y quincenal (1 o 2)
         semana_iso, quincena = Provision.get_type_and_week()
-        
-        # Por defecto, sugerimos el tipo basado en el día (1-15: Quincenal, 16+: Semanal)
-        # pero permitimos que el usuario elija.
-        dia_actual = datetime.now().day
-        tipo_sugerido = 'quincenal' if dia_actual <= 15 else 'semanal'
-        
-        config = config_quincenal if tipo_sugerido == 'quincenal' else config_semanal
-        semProv = quincena if tipo_sugerido == 'quincenal' else semana_iso
 
-        if not config:
-             # Si el sugerido no existe, probamos el otro
-             tipo_sugerido = 'semanal' if tipo_sugerido == 'quincenal' else 'quincenal'
-             config = config_semanal if tipo_sugerido == 'semanal' else config_quincenal
-             semProv = semana_iso if tipo_sugerido == 'semanal' else quincena
-
-        if not config:
-            flash('Error: No se encontraron configuraciones de provisión activas', 'error')
-            combos = Provision.get_active_combos()
-            return render_template('realizarP.html', tipo_provision='semanal', combos=combos)
-
-        # Obtener productos de la provisión
-        productos = Provision.get_products(config['id'], semProv)
-
-        # Preparar datos para la sesión y template
-        session['combo'] = productos
+        # Guardar ambos períodos en sesión para mostrarlos en el formulario
         session['fecha'] = datetime.now().strftime('%A, %d / %m / %Y')
-        session['semana'] = semProv
-        session['tipo_provision'] = tipo_sugerido
-        
-        # Guardar config_id y periodos en sesión para el POST
-        session['provision_config_id'] = config['id']
         session['semana_iso'] = semana_iso
         session['quincena'] = quincena
 
-        # Obtener combos disponibles
+        # Verificar cuáles nóminas ya fueron generadas hoy
+        semanal_ya_hecha = Provision.exists(semana_iso, '1')
+        quincenal_ya_hecha = Provision.exists(quincena, '2')
+
         combos = Provision.get_active_combos()
-
-        logger.info(f"Formulario provision - Tipo Sugerido: {tipo_sugerido}, Semana/Periodo: {semProv}")
-        return render_template('realizarP.html', tipo_provision=tipo_sugerido, combos=combos)
-
+        return render_template(
+            'realizarP.html',
+            combos=combos,
+            semana_iso=semana_iso,
+            quincena=quincena,
+            semanal_ya_hecha=semanal_ya_hecha,
+            quincenal_ya_hecha=quincenal_ya_hecha
+        )
     except Exception as e:
         logger.error(f"Error en mostrar_formulario_provision_get: {e}")
         flash('Error al cargar el formulario de provisión', 'error')
         return redirect(url_for('auth.index'))
 
-
 def procesar_provision_post():
-    """Procesa la provisión y muestra resultados (POST)"""
     try:
-        # 1. Validar datos del formulario
-        tipo_nomina = request.form.get('Nomina') # '1' (Semanal), '2' (Quincenal)
-
+        tipo_nomina = request.form.get('Nomina')
         if not tipo_nomina:
             flash('Debe seleccionar el tipo de nómina', 'error')
             return redirect(url_for('provision.make_provision'))
 
-        # 2. Determinar periodo exacto basado en la selección del usuario
+        # Calcular ambos períodos y usar el que corresponde al tipo seleccionado
         semana_iso, quincena = Provision.get_type_and_week()
-        
-        # El periodo (semana base) depende de lo que el usuario seleccionó
+        # '1' = Semanal (usa número de semana ISO), '2' = Quincenal (usa 1 o 2)
         periodo_actual = semana_iso if tipo_nomina == '1' else quincena
         
-        # 3. Verificar duplicados
+        # Verificar si YA se generó este tipo específico hoy (semanal y quincenal son independientes)
         if Provision.exists(periodo_actual, tipo_nomina):
             nomina_lbl = 'Semanal' if tipo_nomina == '1' else 'Quincenal'
-            flash(f'Error: Ya se ha generado la provisión de nómina {nomina_lbl} para el día de hoy. Solo se permite una por día.', 'error')
+            flash(f'Error: Ya se ha generado la provisión de nómina {nomina_lbl} para el día de hoy.', 'error')
             return redirect(url_for('provision.make_provision'))
         
-        # Usamos la config de la sesión si existe, sino buscamos
-        config_id = session.get('provision_config_id')
+        # --- ESTRATEGIA: No-Retorno (Verificar que no vamos atrás en el tiempo) ---
+        last_date = Provision.get_last_provision_date()
+        if last_date:
+            ahora = datetime.now()
+            # Si el servidor dice que hoy es ANTES que la última provisión guardada
+            if ahora < last_date:
+                flash(f"BLOQUEO DE SEGURIDAD: La fecha del servidor ({ahora.strftime('%d/%m/%Y')}) es anterior al último registro ({last_date.strftime('%d/%m/%Y')}). No puede viajar al pasado.", "error")
+                return redirect(url_for('provision.make_provision'))
+
+        # Validar integridad del reloj antes de cualquier operación CRÍTICA
+        is_sync, time_msg = check_system_time_integrity()
+        if not is_sync:
+            flash(f"PROCESO BLOQUEADO: {time_msg}. El reloj del servidor ha sido alterado.", "error")
+            return redirect(url_for('provision.make_provision'))
+
         tipo_prov_slug = 'semanal' if tipo_nomina == '1' else 'quincenal'
         
-        if not config_id:
-             config_semanal, config_quincenal = Provision.get_available_tables()
-             config = config_semanal if tipo_prov_slug == 'semanal' else config_quincenal
-             if config:
-                 config_id = config['id']
-        
-        if not config_id:
-            flash('Error de configuración de provisión', 'error')
-            return redirect(url_for('provision.make_provision'))
-        
-        # Necesitamos semProv para el log y guardado
-        # Para semanal: semana_iso. Para quincenal: quincena.
         semProv = periodo_actual
         tipo_provision = tipo_prov_slug
 
-        # 4. Obtener productos de la provisión (ya sea combo o estándar)
         combo_id = request.form.get('combo_id')
+        productos = []
         if combo_id and combo_id != 'standard':
             selected_combo = ComboModel.get_combo_by_id(int(combo_id))
             if selected_combo:
                 productos = [(item['nombre'], str(item['cantidad'])) for item in selected_combo['items']]
-            else:
-                productos = Provision.get_products(config_id, semProv)
-        else:
-            productos = Provision.get_products(config_id, semProv)
 
-        # 5. Obtener empleados
+        if not productos:
+            flash('Debe seleccionar un combo válido.', 'warning')
+            return redirect(url_for('provision.make_provision'))
+
         asignados = Employee.get_all(tipo_nomina, 'activo', 1000)
-        
-        # Filtrar invalidados: Solo admin o roles con permiso especial pueden verlos
         user_permissions = session.get('user_permissions', [])
         can_view_unapproved = 'all' in user_permissions or 'view_unapproved' in user_permissions or session.get('isAdmin') == 1
         
@@ -185,281 +160,177 @@ def procesar_provision_post():
         if can_view_unapproved:
             invalidados = Employee.get_all(tipo_nomina, 'inactivo', 1000)
         
-        # Si no pueden ver invalidados, no deberíamos intentar guardarlos en logs con conteo real 
-        # (o sí, para integridad del sistema, pero el usuario no los ve).
-        # Mantendremos la integridad del sistema guardando el log correcto, pero ocultándolos en la vista.
+        Provision.save_log(semProv, tipo_nomina, session.get('userAlias', 'Usuario'), len(asignados), len(invalidados))
 
-        # 6. Guardar en el log de provisiones
-        Provision.save_log(semProv, tipo_nomina, session.get('user', 'Usuario desconocido'), len(asignados), len(invalidados))
-
-        # 7. Guardar en el historial de provisiones con información completa
-        success = False
-        if productos and (asignados or invalidados):
-            success = Provision.save_history(
-                tipo_provision,
-                semProv,
-                tipo_nomina,
-                productos,
-                asignados,
-                invalidados,
-                session.get('id'),
-                session.get('user', 'Usuario desconocido')
+        try:
+            provision_id = Provision.save_history(
+                tipo_provision, semProv, tipo_nomina, productos,
+                asignados, invalidados, session.get('id'),
+                session.get('userAlias', 'Usuario')
             )
-
-        if not success:
-            logger.error(f"Error al guardar historial de provision - Tipo: {tipo_provision}, Periodo: {semProv}")
-            flash('Error técnico: La provisión se procesó pero no pudo guardarse en el historial. Por favor contacte a soporte.', 'error')
-            # Podríamos redirigir, pero dejamos que vea los resultados actuales en sesión por ahora
-
-        # 8. Preparar datos para la plantilla
-        session.update({
-            'asignados': asignados,
-            'invalidados': invalidados,
-            'nomina': tipo_nomina,
-            'semana': semProv,
-            'semProv': semProv,
-            'tipo_provision': tipo_provision,
-            'fecha': datetime.now().strftime('%A, %d / %m / %Y'),
-            'combo': productos,
-            'provExiste': False
-        })
-
-        logger.info(f"Provision procesada - Asignados: {len(asignados)}, Invalidados: {len(invalidados)}")
-        flash('Provisión creada', 'success')
-        return render_template('resultados_provision.html')
-
+        except mariadb.Error as e:
+            if e.errno == 1062:
+                flash(f"ERROR CRÍTICO: La provisión para la Semana {semProv} ({tipo_prov_slug}) ya existe en la base de datos.", "error")
+            else:
+                flash(f"Error de base de datos al guardar: {str(e)}", "error")
+            return redirect(url_for('provision.make_provision'))
+        
+        if provision_id:
+            session.update({
+                'asignados': asignados,
+                'invalidados': invalidados,
+                'nomina': tipo_nomina,
+                'semana': semProv,
+                'semProv': semProv,
+                'tipo_provision': tipo_provision,
+                'fecha': datetime.now().strftime('%A, %d / %m / %Y'),
+                'combo': productos,
+                'provExiste': False,
+                'current_provision_id': provision_id
+            })
+            flash('Provisión creada exitosamente', 'success')
+            return render_template('resultados_provision.html')
+        else:
+            flash('Error técnico al guardar en historial.', 'error')
+            return redirect(url_for('provision.make_provision'))
     except Exception as e:
         logger.error(f"Error crítico en procesar_provision_post: {e}")
         flash('Error al procesar la provisión', 'error')
         return redirect(url_for('provision.make_provision'))
-
+    
 
 # =============================================================================
-# RUTAS DE EXPORTACIÓN (SOLO ADMIN Y SUPERVISOR)
+# RUTAS DE EXPORTACIÓN
 # =============================================================================
 @provision_bp.route('/exportar/<tipo_empleado>/<formato>')
 @login_required
-@permission_required('create_provisions')  # ← AGREGADO
+@permission_required('create_provisions')
 def exportar_empleados(tipo_empleado, formato):
-    """Exporta empleados a Excel, CSV - Solo admin y supervisor"""
     try:
-        if tipo_empleado == 'asignados':
-            datos = session.get('asignados', [])
-            filename = f"empleados_asignados_{datetime.now().strftime('%Y%m%d_%H%M')}"
-            titulo = "EMPLEADOS ASIGNADOS - PROVISIÓN"
-        elif tipo_empleado == 'invalidados':
-            # Verificar permiso para exportar invalidados
-            user_permissions = session.get('user_permissions', [])
-            can_view_unapproved = 'all' in user_permissions or 'view_unapproved' in user_permissions or session.get('isAdmin') == 1
-            
-            if not can_view_unapproved:
-                flash('No tiene permisos para exportar empleados no aprobados', 'error')
-                return redirect(url_for('provision.make_provision'))
+        provision_id = session.get('current_provision_id')
+        raw_data = []
+        
+        if provision_id:
+            status_filter = 1 if tipo_empleado == 'asignados' else 0
+            raw_data = Provision.get_beneficiary_report({'provision_id': provision_id, 'recibio': status_filter})
+        
+        if not raw_data:
+            raw_data = session.get('asignados', []) if tipo_empleado == 'asignados' else session.get('invalidados', [])
 
-            datos = session.get('invalidados', [])
-            filename = f"empleados_invalidados_{datetime.now().strftime('%Y%m%d_%H%M')}"
-            titulo = "EMPLEADOS INVALIDADOS - PROVISIÓN"
-        else:
-            flash('Tipo de empleado no válido', 'error')
+        if not raw_data:
+            flash('No hay datos recientes para exportar. Realice una provisión primero.', 'warning')
             return redirect(url_for('provision.make_provision'))
 
-        if not datos:
-            flash('No hay datos para exportar', 'warning')
-            return redirect(url_for('provision.make_provision'))
-
-        # Encabezados de columnas
         headers = ['Cédula', 'Nombre', 'Apellido', 'Departamento', 'ID Empleado', 'Estatus']
+        datos_normalizados = []
+        estatus_label = "ASIGNADO" if tipo_empleado == 'asignados' else "INVALIDADO"
+        
+        for emp in raw_data:
+            # Manejar tanto diccionarios como objetos si fuera necesario
+            nombre = emp.get('nombre', '')
+            apellido = emp.get('apellido', '')
+            
+            # Si vienen del reporte de beneficiarios, el nombre está completo
+            if not nombre and not apellido:
+                nombre_completo = emp.get('nombre_completo', '')
+                partes = nombre_completo.split(' ', 1) if ' ' in nombre_completo else [nombre_completo, '']
+                nombre = partes[0]
+                apellido = partes[1] if len(partes) > 1 else ''
+            
+            datos_normalizados.append([
+                emp.get('cedula', ''),
+                nombre,
+                apellido,
+                emp.get('departamento', ''),
+                emp.get('id_empleado', 'N/A'),
+                estatus_label
+            ])
+
+        filename = f"empleados_{tipo_empleado}_{datetime.now().strftime('%Y%m%d')}"
+        titulo = f"REPORTE DE EMPLEADOS {estatus_label}S"
 
         if formato == 'csv':
-            return exportar_csv(datos, headers, filename, titulo)
-        elif formato in ['xlsx', 'xls']:
-            return exportar_excel(datos, headers, filename, titulo, formato)
-        else:
-            flash('Formato no soportado', 'error')
-            return redirect(url_for('provision.make_provision'))
-
+            return exportar_csv(datos_normalizados, headers, filename, titulo)
+        return exportar_excel_generic(datos_normalizados, headers, filename, titulo)
     except Exception as e:
-        logger.error(f"Error en exportación: {e}")
-        flash('Error al exportar los datos', 'error')
+        import traceback
+        traceback.print_exc()
+        flash(f'Error al exportar: {str(e)}', 'error')
         return redirect(url_for('provision.make_provision'))
 
-
-def exportar_csv(datos, headers, filename, titulo):
-    """Exporta datos a formato CSV"""
-    output = io.StringIO()
-    writer = csv.writer(output)
-
-    # Escribir título y encabezados
-    writer.writerow([titulo])
-    writer.writerow([f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}"])
-    writer.writerow([])
-    writer.writerow(headers)
-
-    # Escribir datos
-    for empleado in datos:
-        estatus = "ASIGNADO" if "asignados" in filename else "INVALIDADO"
-        writer.writerow(list(empleado) + [estatus])
-
-    response = Response(
-        output.getvalue(),
-        mimetype="text/csv",
-        headers={"Content-Disposition": f"attachment;filename={filename}.csv"}
-    )
-
-    return response
-
-
-def exportar_excel(datos, headers, filename, titulo, formato):
-    """Exporta datos a formato Excel"""
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Empleados"
-
-    # Estilos
-    titulo_font = Font(bold=True, size=14)
-    header_font = Font(bold=True, color="FFFFFF")
-    header_fill = PatternFill(start_color="366092", end_color="366092", fill_type="solid")
-
-    # Escribir título
-    ws.merge_cells('A1:F1')
-    ws['A1'] = titulo
-    ws['A1'].font = titulo_font
-    ws['A1'].alignment = Alignment(horizontal='center')
-
-    # Escribir fecha
-    ws.merge_cells('A2:F2')
-    ws['A2'] = f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}"
-    ws['A2'].alignment = Alignment(horizontal='center')
-
-    # Escribir encabezados
-    for col, header in enumerate(headers, 1):
-        cell = ws.cell(row=4, column=col, value=header)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = Alignment(horizontal='center')
-
-    # Escribir datos
-    for row, empleado in enumerate(datos, 5):
-        estatus = "ASIGNADO" if "asignados" in filename else "INVALIDADO"
-        for col, valor in enumerate(list(empleado) + [estatus], 1):
-            ws.cell(row=row, column=col, value=valor)
-
-    # Ajustar anchos de columna
-    for column in ws.columns:
-        max_length = 0
-        column_letter = column[0].column_letter
-        for cell in column:
-            try:
-                if len(str(cell.value)) > max_length:
-                    max_length = len(str(cell.value))
-            except:
-                pass
-        adjusted_width = min(max_length + 2, 50)
-        ws.column_dimensions[column_letter].width = adjusted_width
-
-    # Guardar en buffer
-    buffer = io.BytesIO()
-    wb.save(buffer)
-    buffer.seek(0)
-
-    mimetype = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    extension = "xlsx"
-
-    response = Response(
-        buffer.read(),
-        mimetype=mimetype,
-        headers={"Content-Disposition": f"attachment;filename={filename}.{extension}"}
-    )
-
-    return response
-
-
-# =============================================================================
-# RUTA PARA VER HISTORIAL DE PROVISIONES (TODOS LOS USUARIOS)
-# =============================================================================
 @provision_bp.route('/historial_provisiones')
-@login_required  # ← Solo login_required, todos pueden ver histórico
+@login_required
 def historial_provisiones():
-    """Muestra el historial completo de provisiones realizadas - TODOS los usuarios autenticados"""
-    print("DEBUG: Accessing historial_provisiones route") # DEBUG
     try:
-        # Fetch raw data from model
         raw_history = Provision.get_history(100)
-        print(f"DEBUG: raw_history count: {len(raw_history)}") # DEBUG
-
         historial = []
         for row in raw_history:
-            try:
-                # row structure: 0:id, 1:tipo_provision, 2:semana, 3:tipo_nomina, 4:productos, 
-                # 5:datos_completos, 6:fecha, 7:usuario
-                
-                # Manejar productos
-                productos = []
-                if row[4]:  # productos
-                    try:
-                        productos = json.loads(row[4])
-                    except:
-                        productos = []
-
-                # Manejar datos completos con valores por defecto
-                datos_completos = {
-                    'empleados_asignados': 0,
-                    'empleados_invalidados': 0,
-                    'resumen_nomina': {
-                        'total_empleados': 0,
-                        'empleados_activos': 0,
-                        'empleados_inactivos': 0,
-                        'total_departamentos': 0
-                    },
-                    'departamentos_detallados': []
-                }
-
-                if row[5]:  # datos_completos
-                    try:
-                        datos_cargados = json.loads(row[5])
-                        if isinstance(datos_cargados, dict):
-                            datos_completos.update(datos_cargados)
-                            if 'resumen_nomina' not in datos_completos:
-                                datos_completos['resumen_nomina'] = {
-                                    'total_empleados': 0,
-                                    'empleados_activos': 0,
-                                    'empleados_inactivos': 0,
-                                    'total_departamentos': 0
-                                }
-                    except:
-                        pass
-
-                historial.append({
-                    'id': row[0],
-                    'tipo_provision': row[1] or 'N/A',
-                    'semana': row[2] or 'N/A',
-                    'tipo_nomina': row[3] or 'N/A',
-                    'productos': productos,
-                    'datos_completos': datos_completos,
-                    'fecha_creacion': row[6],
-                    'usuario_nombre': row[7] or 'Usuario desconocido'
-                })
-
-            except Exception as e:
-                import traceback
-                traceback.print_exc()
-                print(f"DEBUG ERROR parsing row: {e}")
-                logger.error(f"Error procesando fila del historial: {e}")
-                continue
-
-        logger.info(f"Historial cargado: {len(historial)} registros")
-
-        # Pasar información de rol al template
-        es_admin = session.get('isAdmin') == 1
-        user_roles = session.get('user_roles', [])
-        es_supervisor = any(role.get('name') == 'supervisor' for role in user_roles)
-
-        return render_template('historial_provisiones.html',
-                             historial=historial,
-                             es_admin=es_admin,
-                             es_supervisor=es_supervisor)
-
+            productos = from_json(row[4]) if isinstance(row[4], str) else (row[4] if row[4] else [])
+            datos_completos = from_json(row[5]) if isinstance(row[5], str) else (row[5] if row[5] else {})
+            
+            historial.append({
+                'id': row[0], 'tipo_provision': row[1] or 'N/A', 'semana': row[2] or 'N/A',
+                'tipo_nomina': row[3] or 'N/A', 'productos': productos,
+                'datos_completos': datos_completos, 'fecha_creacion': row[6],
+                'usuario_nombre': row[7] or 'Usuario desconocido'
+            })
+        return render_template('historial_provisiones.html', historial=historial, 
+                             es_admin=(session.get('isAdmin') == 1))
     except Exception as e:
-        logger.error(f"Error obteniendo historial: {e}")
-        flash('Error al cargar el historial de provisiones', 'error')
+        logger.error(f"Error historial: {e}")
+        flash('Error al cargar historial', 'error')
         return render_template('historial_provisiones.html', historial=[])
+
+@provision_bp.route('/consultar_beneficios')
+@login_required
+def consultar_beneficios():
+    try:
+        filters = {
+            'cedula': request.args.get('cedula'), 'nombre': request.args.get('nombre'),
+            'semana': request.args.get('semana'), 'fecha': request.args.get('fecha'),
+            'recibio': request.args.get('recibio'), 'tipo_nomina': request.args.get('tipo_nomina')
+        }
+        recibio_int = int(filters['recibio']) if filters['recibio'] in ['0', '1'] else None
+        report_filters = filters.copy()
+        report_filters['recibio'] = recibio_int
+        
+        # Mapear tipo_nomina de ID a texto para la consulta en provisiones_historial
+        tipo_nomina_map = {'1': 'Semanal', '2': 'Quincenal'}
+        if filters['tipo_nomina'] in tipo_nomina_map:
+            report_filters['tipo_nomina'] = tipo_nomina_map[filters['tipo_nomina']]
+        
+        reporte = Provision.get_beneficiary_report(report_filters)
+        for row in reporte:
+            row['productos_list'] = from_json(row['productos']) if isinstance(row['productos'], str) else (row['productos'] if row['productos'] else [])
+
+        return render_template('consultar_beneficios.html', reporte=reporte, filters=filters)
+    except Exception as e:
+        logger.error(f"Error beneficios: {e}")
+        flash('Error al cargar beneficios', 'error')
+        return redirect(url_for('provision.historial_provisiones'))
+
+@provision_bp.route('/exportar_reporte_beneficiarios')
+@login_required
+@permission_required('create_provisions')
+def exportar_reporte_beneficiarios():
+    try:
+        filters = {
+            'cedula': request.args.get('cedula'), 'nombre': request.args.get('nombre'),
+            'semana': request.args.get('semana'), 'fecha': request.args.get('fecha'),
+            'recibio': request.args.get('recibio')
+        }
+        recibio_int = int(filters['recibio']) if filters['recibio'] in ['0', '1'] else None
+        reporte = Provision.get_beneficiary_report({'cedula': filters['cedula'], 'nombre': filters['nombre'], 
+                                                   'semana': filters['semana'], 'fecha': filters['fecha'], 
+                                                   'recibio': recibio_int})
+        
+        headers = ["Cédula", "Nombre Completo", "Departamento", "Estatus", "Semana", "Nómina", "Fecha Entrega"]
+        datos = [[item['cedula'], item['nombre_completo'], item['departamento'], 
+                 ("RECIBIÓ" if item['recibio'] else "NO RECIBIÓ"), item['semana'], 
+                 item['tipo_nomina'], item['fecha_entrega'].strftime('%d/%m/%Y %H:%M')] for item in reporte]
+
+        return exportar_excel_generic(datos, headers, f"reporte_beneficiarios_{datetime.now().strftime('%Y%m%d')}", "REPORTE DE BENEFICIARIOS")
+    except Exception as e:
+        logger.error(f"Error exportando: {e}")
+        flash('Error al exportar', 'error')
+        return redirect(url_for('provision.consultar_beneficios', **request.args))

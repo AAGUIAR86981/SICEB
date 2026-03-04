@@ -152,11 +152,14 @@
                                             {{ 'Edición' if log.field_name else 'Modificación' }}
                                         </span>
                                     </td>
+                                    <td><code
+                                            class="text-primary small">{{ log.ip_address if log.ip_address else '-' }}</code>
+                                    </td>
                                 </tr>
                                 {% endfor %}
                                 {% else %}
                                 <tr>
-                                    <td colspan="4" class="text-center py-4">No hay logs de auditoría detallados.</td>
+                                    <td colspan="5" class="text-center py-4">No hay logs de auditoría detallados.</td>
                                 </tr>
                                 {% endif %}
                             </tbody>

@@ -1,24 +1,35 @@
-﻿{%extends 'layout.html'%}
-{%block title%}Olvido Contraseña{%endblock%}
-{%block content%}
-<div class="row">
-    <h1>Ingrese su nueva contraseña</h1>
-    <div class="col">
-        <p>Su contraseña debe contener:</p>
-        <ul>
-            <li>Por lo menos una letra minuscula</li>
-            <li>Por lo menos una letra mayuscula</li>
-            <li>Por lo menos un número</li>
-            <li>Por lo menos un carácter especial (ej.: #, $, %, &,)</li>
-            <li>Y debe tener una longitud de 8 o más caracteres</li>
+﻿{% extends 'layout.html' %}
+
+{% block title %}Restablecer Contraseña{% endblock %}
+
+{% block content %}
+<div class="login-container">
+    <h1 class="form-title">Ingrese su nueva contraseña</h1>
+
+    <div class="login-form">
+        <p class="text-center mb-3">Su contraseña debe contener:</p>
+        <ul class="mb-4">
+            <li>Al menos una letra minúscula</li>
+            <li>Al menos una letra mayúscula</li>
+            <li>Al menos un número</li>
+            <li>Al menos un carácter especial (ej.: #, $, %, &)</li>
+            <li>Longitud de 8 o más caracteres</li>
         </ul>
+
         <form action="/nuevaclave" method="POST">
-            <label for="password">Nueva Contraseña:</label><br>
-            <input type="password" id="password" name="password" placeholder="Nueva Contraseña" pattern="((?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W]).{8,64})" required><br/>
-            <button class="btn btn-primary" type="submit" style="margin-top:10px" id="submitF" name="submitF">Cambiar</button>
-            <button class="btn btn-danger" type="reset" style="margin-top:10px" id="resetF" name="resetF">Borrar</button>
+            <div class="form-group">
+                <label for="password" class="form-label">Nueva Contraseña:</label>
+                <input type="password" id="password" name="password" class="form-control" placeholder="Nueva Contraseña"
+                    pattern="((?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W]).{8,64})" required>
+            </div>
+
+            <div class="btn-center-container">
+                <button class="btn btn-primary" type="submit" id="submitF" name="submitF">Cambiar</button>
+                <button class="btn btn-danger" type="reset" id="resetF" name="resetF">Borrar</button>
+            </div>
         </form>
-        <a href="{{url_for('auth.index')}}">Volver al Inicio</a>
+
+        <a href="{{url_for('auth.index')}}" class="forgot-link">Volver al Inicio</a>
     </div>
 </div>
-{%endblock%}
+{% endblock %}

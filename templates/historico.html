@@ -1,4 +1,4 @@
-﻿{% extends 'layout.html' %}
+{% extends 'layout.html' %}
 {% block title %}Histórico de Provisiones{% endblock %}
 
 {% block content %}
@@ -61,13 +61,16 @@
                         ); width: 250px; height: 250px; border-radius: 50%; margin: 0 auto;"></div>
                     </div>
                     <div class="mt-3">
-                        <p><span style="color:#28a745">●</span> Aprobados: <strong>{{ session.totalAprob }}</strong> ({{ "%.1f"|format((session.totalAprob/session.total*100) if session.total > 0 else 0) }}%)</p>
-                        <p><span style="color:#dc3545">●</span> Rechazados: <strong>{{ session.totalRecha }}</strong> ({{ "%.1f"|format((session.totalRecha/session.total*100) if session.total > 0 else 0) }}%)</p>
+                        <p><span style="color:#28a745">●</span> Aprobados: <strong>{{ session.totalAprob }}</strong> ({{
+                            "%.1f"|format((session.totalAprob/session.total*100) if session.total > 0 else 0) }}%)</p>
+                        <p><span style="color:#dc3545">●</span> Rechazados: <strong>{{ session.totalRecha }}</strong>
+                            ({{ "%.1f"|format((session.totalRecha/session.total*100) if session.total > 0 else 0) }}%)
+                        </p>
                     </div>
                 </div>
             </div>
         </div>
-        
+
         <div class="col-md-6">
             <div class="card">
                 <div class="card-header bg-info text-white">
@@ -98,36 +101,34 @@
                             <th>Aprobados</th>
                             <th>Rechazados</th>
                             <th>Usuario</th>
+                            <th>IP</th>
                             <th>Fecha Provisión</th>
                             <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for log in session.provLogs %}
-                        {% set tipo_nomina_texto = 'Semanal' if log[3] == '1' else 'Quincenal' if log[3] == '2' else log[3] %}
-                        <tr class="fila-provision" 
-                            data-semana="{{ log[0] }}" 
-                            data-aprobados="{{ log[1] }}" 
-                            data-rechazados="{{ log[2] }}"
-                            data-tiponom="{{ tipo_nomina_texto }}">
+                        {% set tipo_nomina_texto = 'Semanal' if log[3] == '1' else 'Quincenal' if log[3] == '2' else
+                        log[3] %}
+                        <tr class="fila-provision" data-semana="{{ log[0] }}" data-aprobados="{{ log[1] }}"
+                            data-rechazados="{{ log[2] }}" data-tiponom="{{ tipo_nomina_texto }}">
                             <td>{{ log[0] }}</td>
                             <td>
-                                <span class="badge {% if tipo_nomina_texto == 'Semanal' %}bg-warning{% else %}bg-info{% endif %}">
+                                <span
+                                    class="badge {% if tipo_nomina_texto == 'Semanal' %}bg-warning{% else %}bg-info{% endif %}">
                                     {{ tipo_nomina_texto }}
                                 </span>
                             </td>
                             <td class="text-success fw-bold">{{ log[1] }}</td>
                             <td class="text-danger fw-bold">{{ log[2] }}</td>
                             <td>{{ log[4] }}</td>
+                            <td><code class="text-primary small">{{ log[6] if log|length > 6 else '-' }}</code></td>
                             <td>{{ log[5].strftime('%d/%m/%Y %H:%M') if log[5] else 'N/A' }}</td>
                             <td>
-                                <button class="btn btn-sm btn-outline-primary ver-detalle" 
-                                        data-bs-toggle="tooltip" 
-                                        title="Ver gráfico detallado"
-                                        data-semana="{{ log[0] }}"
-                                        data-aprobados="{{ log[1] }}"
-                                        data-rechazados="{{ log[2] }}"
-                                        data-tiponom="{{ tipo_nomina_texto }}">
+                                <button class="btn btn-sm btn-outline-primary ver-detalle" data-bs-toggle="tooltip"
+                                    title="Ver gráfico detallado" data-semana="{{ log[0] }}"
+                                    data-aprobados="{{ log[1] }}" data-rechazados="{{ log[2] }}"
+                                    data-tiponom="{{ tipo_nomina_texto }}">
                                     📊
                                 </button>
                             </td>
@@ -171,7 +172,8 @@
                 <div class="mb-3">
                     <span class="badge bg-secondary" id="modal-tiponom"></span>
                 </div>
-                <div id="grafico-modal" class="piechart" style="width: 200px; height: 200px; border-radius: 50%; margin: 0 auto;"></div>
+                <div id="grafico-modal" class="piechart"
+                    style="width: 200px; height: 200px; border-radius: 50%; margin: 0 auto;"></div>
                 <div class="mt-3">
                     <p><span style="color:#28a745">●</span> Aprobados: <strong id="modal-aprobados"></strong></p>
                     <p><span style="color:#dc3545">●</span> Rechazados: <strong id="modal-rechazados"></strong></p>
@@ -186,102 +188,104 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
-.piechart {
-    border: 3px solid #fff;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-}
-.fila-provision:hover {
-    background-color: #f8f9fa;
-    cursor: pointer;
-}
-.table-hover tbody tr:hover {
-    transform: translateY(-2px);
-    transition: all 0.2s ease;
-}
+    .piechart {
+        border: 3px solid #fff;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+
+    .fila-provision:hover {
+        background-color: #f8f9fa;
+        cursor: pointer;
+    }
+
+    .table-hover tbody tr:hover {
+        transform: translateY(-2px);
+        transition: all 0.2s ease;
+    }
 </style>
 
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Inicializar tooltips
-    const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
-    tooltips.forEach(tooltip => new bootstrap.Tooltip(tooltip));
+    document.addEventListener('DOMContentLoaded', function () {
+        // Inicializar tooltips
+        const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+        tooltips.forEach(tooltip => new bootstrap.Tooltip(tooltip));
 
-    // Gráfico de nóminas con Chart.js - CORREGIDO
-    function inicializarGraficoNominas() {
-        const ctx = document.getElementById('nominasChart').getContext('2d');
-        
-        // Calcular datos por tipo de nómina - CORREGIDO
-        const nominas = {
-            'Semanal': { aprobados: 0, rechazados: 0 },
-            'Quincenal': { aprobados: 0, rechazados: 0 }
-        };
+        // Gráfico de nóminas con Chart.js - CORREGIDO
+        function inicializarGraficoNominas() {
+            const ctx = document.getElementById('nominasChart').getContext('2d');
 
-        // Procesar cada registro del historial
-        {% for log in session.provLogs %}
+            // Calcular datos por tipo de nómina - CORREGIDO
+            const nominas = {
+                'Semanal': { aprobados: 0, rechazados: 0 },
+                'Quincenal': { aprobados: 0, rechazados: 0 }
+            };
+
+            // Procesar cada registro del historial
+            {% for log in session.provLogs %}
             {% set tipo_nomina = 'Semanal' if log[3] == '1' else 'Quincenal' if log[3] == '2' else log[3] %}
-            const aprobados{{ loop.index }} = {{ log[1] }};
-            const rechazados{{ loop.index }} = {{ log[2] }};
-            
-            if ("{{ tipo_nomina }}" === "Semanal") {
-                nominas.Semanal.aprobados += aprobados{{ loop.index }};
-                nominas.Semanal.rechazados += rechazados{{ loop.index }};
-            } else if ("{{ tipo_nomina }}" === "Quincenal") {
-                nominas.Quincenal.aprobados += aprobados{{ loop.index }};
-                nominas.Quincenal.rechazados += rechazados{{ loop.index }};
-            }
-        {% endfor %}
+const aprobados{{ loop.index }} = {{ log[1]|default(0) }};
+const rechazados{{ loop.index }} = {{ log[2]|default(0) }};
 
-        // Crear el gráfico
-        new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['Semanal', 'Quincenal'],
-                datasets: [
-                    {
-                        label: 'Aprobados',
-                        data: [nominas.Semanal.aprobados, nominas.Quincenal.aprobados],
-                        backgroundColor: '#28a745',
-                        borderColor: '#28a745',
-                        borderWidth: 1
-                    },
-                    {
-                        label: 'Rechazados',
-                        data: [nominas.Semanal.rechazados, nominas.Quincenal.rechazados],
-                        backgroundColor: '#dc3545',
-                        borderColor: '#dc3545',
-                        borderWidth: 1
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: {
-                            display: true,
-                            text: 'Cantidad de Empleados'
-                        }
-                    },
-                    x: {
-                        title: {
-                            display: true,
-                            text: 'Tipo de Nómina'
-                        }
-                    }
+    if ("{{ tipo_nomina }}" === "Semanal") {
+        nominas.Semanal.aprobados += aprobados{{ loop.index }};
+        nominas.Semanal.rechazados += rechazados{{ loop.index }};
+    } else if ("{{ tipo_nomina }}" === "Quincenal") {
+        nominas.Quincenal.aprobados += aprobados{{ loop.index }};
+        nominas.Quincenal.rechazados += rechazados{{ loop.index }};
+    }
+    {% endfor %}
+
+    // Crear el gráfico
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Semanal', 'Quincenal'],
+            datasets: [
+                {
+                    label: 'Aprobados',
+                    data: [nominas.Semanal.aprobados, nominas.Quincenal.aprobados],
+                    backgroundColor: '#28a745',
+                    borderColor: '#28a745',
+                    borderWidth: 1
                 },
-                plugins: {
-                    legend: {
-                        position: 'top',
-                    },
+                {
+                    label: 'Rechazados',
+                    data: [nominas.Semanal.rechazados, nominas.Quincenal.rechazados],
+                    backgroundColor: '#dc3545',
+                    borderColor: '#dc3545',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
                     title: {
                         display: true,
-                        text: 'Distribución por Tipo de Nómina'
+                        text: 'Cantidad de Empleados'
+                    }
+                },
+                x: {
+                    title: {
+                        display: true,
+                        text: 'Tipo de Nómina'
                     }
                 }
+            },
+            plugins: {
+                legend: {
+                    position: 'top',
+                },
+                title: {
+                    display: true,
+                    text: 'Distribución por Tipo de Nómina'
+                }
             }
-        });
+        }
+    });
     }
 
     // Función para mostrar gráfico detallado en modal
@@ -311,13 +315,13 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Event listeners para las filas
     document.querySelectorAll('.fila-provision').forEach(fila => {
-        fila.addEventListener('click', function(e) {
+        fila.addEventListener('click', function (e) {
             if (!e.target.closest('button')) {
                 const semana = this.getAttribute('data-semana');
                 const aprobados = parseInt(this.getAttribute('data-aprobados'));
                 const rechazados = parseInt(this.getAttribute('data-rechazados'));
                 const tipoNom = this.getAttribute('data-tiponom');
-                
+
                 mostrarDetalleProvision(semana, aprobados, rechazados, tipoNom);
             }
         });
@@ -325,12 +329,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Event listeners para botones de detalle
     document.querySelectorAll('.ver-detalle').forEach(boton => {
-        boton.addEventListener('click', function() {
+        boton.addEventListener('click', function () {
             const semana = this.getAttribute('data-semana');
             const aprobados = parseInt(this.getAttribute('data-aprobados'));
             const rechazados = parseInt(this.getAttribute('data-rechazados'));
             const tipoNom = this.getAttribute('data-tiponom');
-            
+
             mostrarDetalleProvision(semana, aprobados, rechazados, tipoNom);
         });
     });
