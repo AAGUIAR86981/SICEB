@@ -2,7 +2,7 @@
 echo "# Sistema Lider Pollo
 
 ## Descripción
-Hast los momentos sistema actualizado y para el proyecto
+Hasta los momentos sistema actualizado y para el proyecto
 claro que esta tambien sujeto a cambios futuros
 
 ## Instalación
