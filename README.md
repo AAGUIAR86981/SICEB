@@ -1,4 +1,4 @@
-# Si no tienes README.md, crea uno:
+
 echo "# Sistema Lider Pollo
 
 ## Descripción
