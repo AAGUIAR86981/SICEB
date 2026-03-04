@@ -1,8 +1,9 @@
 # Si no tienes README.md, crea uno:
-echo "# Mi Aplicación Flask
+echo "# Sistema Lider Pollo
 
 ## Descripción
-Esta es mi aplicación Flask empaquetada
+Hast los momentos sistema actualizado y para el proyecto
+claro que esta tambien sujeto a cambios futuros
 
 ## Instalación
 \`\`\`bash
