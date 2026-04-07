@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="es">
 
 <head>
@@ -19,11 +19,11 @@
 
   {% block extra_css %}{% endblock %}
 
-  <!-- Scripts en head -->
+  <!-- Programas de ayuda (Scripts): Funciones que se cargan antes de mostrar la página -->
   <script>
     {% block head_scripts %}
-    // Scripts que deben cargarse en el head
-    console.log('SICEB Plantilla base cargada');
+    // Registramos en la consola del navegador que la estructura base está lista
+    console.log('SICEB: Estructura base cargada correctamente');
     {% endblock %}
   </script>
 </head>
@@ -93,16 +93,22 @@
                     class="fas fa-sign-out-alt me-1"></i><span>Salir</span></a>
               </li>
             </ul>
-            <div class="user-info text-center">
-              <p class="mb-0">
-                <i class="fas fa-user me-1"></i> <strong>Usuario:</strong> {{
-                session.get('userAlias', '') }}
-              </p>
+            <div class="user-info text-end shadow-sm">
+              <div class="d-flex align-items-center justify-content-end gap-2">
+                <div class="text-white small fw-bold">
+                  <i class="far fa-calendar-alt me-1"></i> 
+                  {{ session.get('fecha') or now.strftime('%d/%m/%Y') if now else 'Fecha' }}
+                </div>
+                <div class="vr bg-white opacity-25" style="height: 15px;"></div>
+                <p class="mb-0 small">
+                  <i class="fas fa-user me-1"></i> {{ session.get('userAlias', 'Usuario') }}
+                </p>
+              </div>
               {% if session['last_access'] %}
               <div class="mt-1">
-                <span class="badge bg-primary fs-6">
+                <span class="badge bg-primary" style="font-size: 0.65rem;">
                   <i class="fas fa-history me-1"></i>
-                  Tu última vez: {{ session['last_access'].strftime('%d/%m/%Y %H:%M') }}
+                  Última vez: {{ session['last_access'].strftime('%d/%m/%Y %H:%M') }}
                 </span>
               </div>
               {% endif %}
@@ -115,9 +121,9 @@
     {% endblock %}
   </header>
 
-  <!-- Main Content -->
+  <!-- Contenido Principal: Aquí es donde se carga el contenido de cada página específica -->
   <main class="content">
-    <!-- Mensajes flash -->
+    <!-- Mensajes de Aviso (Flash): Aquí mostramos alertas de éxito o error al usuario -->
     {% with messages = get_flashed_messages(with_categories=true) %} {% if
     messages %}
     <div class="container mt-4">
@@ -131,10 +137,10 @@
     {% endif %} {% endwith %}
 
 
-    <!-- Contenido principal -->
+    <!-- Bloque de Contenido Dinámico: Aquí es donde las demás páginas inyectan su propio diseño -->
     <div class="container">
       {% block content %}
-      <!-- Este bloque será sobreescrito por las plantillas hijas -->
+      <!-- Este espacio será ocupado por el diseño de la página que el usuario haya abierto -->
       {% endblock %}
     </div>
   </main>

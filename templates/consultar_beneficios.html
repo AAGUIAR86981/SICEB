@@ -4,97 +4,117 @@
 
 {% block extra_css %}
 <style>
+    /* Panel de filtros — mismo estilo que empleados */
     .filter-card {
-        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+        background: linear-gradient(135deg, rgba(255,255,255,0.97), rgba(234,242,251,0.97));
         border: none;
-        border-radius: 15px;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+        border-radius: 10px;
+        border-left: 4px solid #2c7be5;
+        box-shadow: 0 2px 10px rgba(44,123,229,0.08);
+    }
+
+    .filter-card .card-header {
+        background: transparent;
+        border-bottom: 1px solid rgba(44,123,229,0.12);
+        padding: 0.6rem 1rem;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #1a2d45;
+        letter-spacing: 0.3px;
+    }
+
+    small.filter-label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #4a6080;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        display: block;
+        margin-bottom: 4px;
+    }
+
+    /* Override global CSS que centra los inputs */
+    .filter-card .form-control,
+    .filter-card .form-select {
+        text-align: left !important;
+        margin-bottom: 0 !important;
+        height: 34px;
+        font-size: 0.8rem;
+        border: 1.5px solid #c8d9f0;
+        border-radius: 6px;
+        background: rgba(255,255,255,0.85);
+        padding: 0.3rem 0.6rem;
+    }
+
+    .filter-card .form-control:focus,
+    .filter-card .form-select:focus {
+        border-color: #2c7be5;
+        box-shadow: 0 0 0 0.15rem rgba(44,123,229,0.18);
+    }
+
+    .filter-card .btn {
+        height: 34px;
+        font-size: 0.8rem;
     }
 
     .results-card {
-        border-radius: 15px;
+        border-radius: 10px;
         overflow: hidden;
         border: none;
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
     }
 
     .table thead {
-        background: linear-gradient(90deg, #4e73df 0%, #224abe 100%);
+        background: linear-gradient(90deg, #1e3a5f 0%, #2c7be5 100%);
         color: white;
     }
 
     .badge-recibio {
-        background-color: #28a745;
+        background-color: #1b7a4a;
         color: white;
-        padding: 0.5em 1em;
+        padding: 0.3em 0.7em;
         border-radius: 50px;
     }
 
     .badge-no-recibio {
-        background-color: #dc3545;
+        background-color: #c0392b;
         color: white;
-        padding: 0.5em 1em;
+        padding: 0.3em 0.7em;
         border-radius: 50px;
     }
 
     .product-tag {
-        background-color: #f1f3f5;
-        border: 1px solid #dee2e6;
-        padding: 2px 8px;
+        background-color: #eaf2fb;
+        border: 1px solid #c8d9f0;
+        padding: 2px 7px;
         border-radius: 4px;
-        margin-right: 5px;
+        margin-right: 3px;
         display: inline-block;
-        font-size: 0.85em;
+        font-size: 0.72rem;
     }
 
-    .search-btn {
-        transition: all 0.3s ease;
+    .table-custom { font-size: 0.82rem; }
+    .table-custom td { padding: 0.38rem 0.6rem; vertical-align: middle; }
+    .table-custom thead th { padding: 0.5rem 0.6rem; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; }
+
+    /* Scroll de tabla — máx 10 filas */
+    .table-scroll {
+        max-height: 490px;
+        overflow-y: auto;
+        border-radius: 0 0 8px 8px;
+    }
+    .table-scroll thead th {
+        position: sticky;
+        top: 0;
+        z-index: 2;
     }
 
-    /* Reducción de tamaño de tabla */
-    .table-custom {
-        font-size: 0.9rem;
-    }
-
-    .table-custom td {
-        padding: 0.4rem 0.6rem;
-        vertical-align: middle;
-    }
-
-    .table-custom thead th {
-        padding: 0.6rem;
-        font-size: 0.85rem;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
-
-    /* Estilos para impresión */
     @media print {
-
-        .filter-card,
-        .btn-group,
-        .navbar,
-        .search-btn,
-        .btn-outline-secondary,
-        .card-header .d-flex {
-            display: none !important;
-        }
-
-        .container {
-            width: 100% !important;
-            max-width: none !important;
-            margin: 0 !important;
-            padding: 0 !important;
-        }
-
-        .results-card {
-            box-shadow: none !important;
-            border: 1px solid #ddd !important;
-        }
-
-        .table-responsive {
-            overflow: visible !important;
-        }
+        .filter-card, .btn-group, .navbar, .search-btn,
+        .btn-outline-secondary, .card-header .d-flex { display: none !important; }
+        .container { width: 100% !important; max-width: none !important; margin: 0 !important; padding: 0 !important; }
+        .results-card { box-shadow: none !important; border: 1px solid #ddd !important; }
+        .table-responsive { overflow: visible !important; }
     }
 </style>
 {% endblock %}
@@ -111,61 +131,79 @@
     </div>
 
     <!-- Filtros -->
-    <div class="card filter-card mb-3 p-3">
-        <form method="GET" action="{{ url_for('provision.consultar_beneficios') }}"
-            class="row g-2 justify-content-center">
-            <div class="col-md-2">
-                <label class="form-label small fw-bold mb-1">Cédula</label>
-                <input type="text" name="cedula" class="form-control form-control-sm" placeholder="Ej: 12345678"
-                    value="{{ filters.cedula or '' }}">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small fw-bold mb-1">Nombre</label>
-                <input type="text" name="nombre" class="form-control form-control-sm" placeholder="Nombre/Apellido"
-                    value="{{ filters.nombre or '' }}">
-            </div>
-            <div class="col-md-1">
-                <label class="form-label small fw-bold mb-1">Semana</label>
-                <input type="number" name="semana" class="form-control form-control-sm" placeholder="Sem"
-                    value="{{ filters.semana or '' }}">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small fw-bold mb-1">Nómina</label>
-                <select name="tipo_nomina" class="form-select form-select-sm">
-                    <option value="">Todas</option>
-                    <option value="1" {% if filters.tipo_nomina=='1' %}selected{% endif %}>Semanal</option>
-                    <option value="2" {% if filters.tipo_nomina=='2' %}selected{% endif %}>Quincenal</option>
-                </select>
-            </div>
-            <div class="col-md-1">
-                <label class="form-label small fw-bold mb-1">Estatus</label>
-                <select name="recibio" class="form-select form-select-sm">
-                    <option value="">Todos</option>
-                    <option value="1" {% if filters.recibio=='1' %}selected{% endif %}>Recibió</option>
-                    <option value="0" {% if filters.recibio=='0' %}selected{% endif %}>No...</option>
-                </select>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label small fw-bold mb-1">Fecha</label>
-                <input type="date" name="fecha" class="form-control form-control-sm" value="{{ filters.fecha or '' }}">
-            </div>
-            <div class="col-md-2 d-flex align-items-end gap-1">
-                <button type="submit" class="btn btn-primary btn-sm px-3 search-btn">
-                    <i class="fas fa-search me-1"></i>Filtrar
-                </button>
-                <a href="{{ url_for('provision.consultar_beneficios') }}" class="btn btn-outline-secondary btn-sm"
-                    title="Limpiar">
-                    <i class="fas fa-sync-alt"></i>
-                </a>
-            </div>
-        </form>
+    <div class="card filter-card mb-3">
+        <div class="card-header d-flex align-items-center gap-2">
+            <i class="fas fa-sliders-h text-primary"></i>
+            <span>Buscar y Filtrar Beneficios</span>
+        </div>
+        <div class="card-body py-3">
+            <form method="GET" action="{{ url_for('provision.consultar_beneficios') }}">
+                <div class="row g-3 align-items-end">
+
+                    <div class="col-lg-2 col-md-4">
+                        <small class="filter-label"><i class="fas fa-id-card me-1"></i>Cédula</small>
+                        <input type="text" name="cedula" class="form-control" placeholder="Ej: 12345678"
+                            value="{{ filters.cedula or '' }}">
+                    </div>
+
+                    <div class="col-lg-2 col-md-4">
+                        <small class="filter-label"><i class="fas fa-user me-1"></i>Nombre</small>
+                        <input type="text" name="nombre" class="form-control" placeholder="Nombre/Apellido"
+                            value="{{ filters.nombre or '' }}">
+                    </div>
+
+                    <div class="col-lg-1 col-md-4">
+                        <small class="filter-label"><i class="fas fa-calendar-week me-1"></i>Semana</small>
+                        <input type="number" name="semana" class="form-control" placeholder="#"
+                            value="{{ filters.semana or '' }}">
+                    </div>
+
+                    <div class="col-lg-2 col-md-4">
+                        <small class="filter-label"><i class="fas fa-money-bill-wave me-1"></i>Nómina</small>
+                        <select name="tipo_nomina" class="form-select">
+                            <option value="">Todas</option>
+                            <option value="1" {% if filters.tipo_nomina=='1' %}selected{% endif %}>Semanal</option>
+                            <option value="2" {% if filters.tipo_nomina=='2' %}selected{% endif %}>Quincenal</option>
+                        </select>
+                    </div>
+
+                    <div class="col-lg-1 col-md-4">
+                        <small class="filter-label"><i class="fas fa-toggle-on me-1"></i>Estatus</small>
+                        <select name="recibio" class="form-select">
+                            <option value="">Todos</option>
+                            <option value="1" {% if filters.recibio=='1' %}selected{% endif %}>Recibió</option>
+                            <option value="0" {% if filters.recibio=='0' %}selected{% endif %}>No recibió</option>
+                        </select>
+                    </div>
+
+                    <div class="col-lg-2 col-md-4">
+                        <small class="filter-label"><i class="fas fa-calendar-alt me-1"></i>Fecha</small>
+                        <input type="date" name="fecha" class="form-control" value="{{ filters.fecha or '' }}">
+                    </div>
+
+                    <div class="col-lg-2 col-md-12 d-flex gap-2">
+                        <small class="filter-label w-100">&nbsp;</small>
+                        <button type="submit" class="btn btn-primary flex-grow-1 d-flex align-items-center justify-content-center gap-1 search-btn">
+                            <i class="fas fa-search"></i>
+                            <span style="font-size:0.75rem">Buscar</span>
+                        </button>
+                        <a href="{{ url_for('provision.consultar_beneficios') }}" class="btn btn-outline-secondary d-flex align-items-center justify-content-center"
+                            title="Limpiar filtros">
+                            <i class="fas fa-sync-alt"></i>
+                        </a>
+                    </div>
+
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Resultados -->
     <div class="card results-card">
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-2 px-3">
             <h6 class="mb-0 text-secondary">
-                <i class="fas fa-list me-2"></i>Registros: <strong>{{ reporte|length }}</strong>
+                <i class="fas fa-list me-2"></i>Total: <strong>{{ total }}</strong>
+                {% if total_pages > 1 %}<span class="text-muted ms-2" style="font-size:0.78rem">(pág. {{ page }}/{{ total_pages }})</span>{% endif %}
             </h6>
             {% if reporte %}
             <div class="btn-group">
@@ -245,6 +283,45 @@
                 <p class="text-muted small">Sin resultados para estos filtros.</p>
             </div>
             {% endif %}
+
+            {% if total_pages > 1 %}
+            <!-- Paginación -->
+            <div class="card-footer bg-white border-top py-2 px-3">
+                <nav aria-label="Paginación">
+                    <ul class="pagination pagination-sm justify-content-center mb-0">
+
+                        {# Construir args sin 'page' para pasarlos en los links #}
+                        {% set base = {} %}
+                        {% for k, v in request.args.items() %}
+                            {% if k != 'page' and v %}{% set _ = base.update({k: v}) %}{% endif %}
+                        {% endfor %}
+
+                        <li class="page-item {{ 'disabled' if page == 1 }}">
+                            <a class="page-link rounded-pill px-3 me-2" href="{{ url_for('provision.consultar_beneficios', page=page-1, **base) }}">Anterior</a>
+                        </li>
+
+                        {% for p in range(1, total_pages + 1) %}
+                            {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+                                <li class="page-item {{ 'active' if p == page }}">
+                                    <a class="page-link rounded-circle mx-1" 
+                                       style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;"
+                                       href="{{ url_for('provision.consultar_beneficios', page=p, **base) }}">{{ p }}</a>
+                                </li>
+                            {% elif p == page - 3 or p == page + 3 %}
+                                <li class="page-item disabled"><span class="page-link border-0">…</span></li>
+                            {% endif %}
+                        {% endfor %}
+
+                        <li class="page-item {{ 'disabled' if page == total_pages }}">
+                            <a class="page-link rounded-pill px-3 ms-2" href="{{ url_for('provision.consultar_beneficios', page=page+1, **base) }}">Siguiente</a>
+                        </li>
+
+
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+
         </div>
     </div>
 </div>

@@ -1,24 +1,24 @@
-# controllers/roles.py - NUEVO ARCHIVO
+# controllers/roles.py - Módulo para gestionar quién puede hacer qué en el sistema
 from flask import Blueprint, render_template, session, flash, redirect, url_for, request
 from config.database import get_db_connection
 from utils.decorators import login_required, admin_required
 
+# Módulo de Roles: Aquí el administrador decide los permisos de cada usuario
 roles_bp = Blueprint('roles', __name__)
 
 @roles_bp.route('/admin/roles')
 @login_required
-@admin_required
+@admin_required # Solo los administradores jefes pueden entrar aquí
 def gestion_roles():
-    """Panel de gestión de roles"""
     conn = None
     cursor = None
     try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        
         # Obtener todos los roles
         from models.roles import get_all_roles
         roles = get_all_roles()
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
         
         # Obtener usuarios con sus roles y estado activo
         cursor.execute('''
@@ -53,10 +53,8 @@ def gestion_roles():
                 'roles': roles_usuario
             })
         
-        return render_template('gestion_roles.html',
-                             roles=roles,
-                             usuarios=usuarios_con_info)
-        
+        return render_template('gestion_roles.html', roles=roles, usuarios=usuarios_con_info)
+
     except Exception as e:
         flash(f'Error: {str(e)}', 'danger')
         return redirect(url_for('admin.admin'))

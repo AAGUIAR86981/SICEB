@@ -114,3 +114,41 @@ document.addEventListener("DOMContentLoaded", function () {
     startContextTimers();
   }
 });
+
+/**
+ * Inicializa la búsqueda en tiempo real para una tabla específica.
+ * @param {string} inputId - ID del campo de entrada de texto.
+ * @param {string} tableId - ID de la tabla a filtrar.
+ */
+function initTableSearch(inputId, tableId) {
+  const searchInput = document.getElementById(inputId);
+  const table = document.getElementById(tableId);
+
+  if (!searchInput || !table) return;
+
+  searchInput.addEventListener('keyup', function () {
+    const filter = searchInput.value.toLowerCase();
+    const rows = table.getElementsByTagName('tr');
+
+    // Empezamos desde 1 para saltar el encabezado (thead)
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      let found = false;
+      const cells = row.getElementsByTagName('td');
+
+      for (let j = 0; j < cells.length; j++) {
+        const cellText = cells[j].textContent || cells[j].innerText;
+        if (cellText.toLowerCase().indexOf(filter) > -1) {
+          found = true;
+          break;
+        }
+      }
+
+      if (found) {
+        row.style.display = "";
+      } else {
+        row.style.display = "none";
+      }
+    }
+  });
+}

@@ -1,0 +1,21 @@
+CREATE TABLE `provisiones_historial` (
+  `id` int(11) NOT NULL AUTO_INCREMENT,
+  `tipo_provision` varchar(20) NOT NULL,
+  `semana` int(11) NOT NULL,
+  `tipo_nomina` varchar(20) NOT NULL,
+  `productos` text DEFAULT NULL,
+  `cant_aprobados` int(11) DEFAULT 0,
+  `cant_rechazados` int(11) DEFAULT 0,
+  `datos_completos` longtext DEFAULT NULL,
+  `usuario_id` int(11) DEFAULT NULL,
+  `usuario_nombre` varchar(100) DEFAULT NULL,
+  `fecha_creacion` timestamp NULL DEFAULT current_timestamp(),
+  `ip_address` varchar(45) DEFAULT NULL,
+  `anio_provision` int(11) GENERATED ALWAYS AS (year(`fecha_creacion`)) STORED,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_control_fraude` (`anio_provision`,`tipo_nomina`,`tipo_provision`,`semana`),
+  KEY `idx_fecha` (`fecha_creacion`),
+  KEY `idx_tipo_semana` (`tipo_nomina`,`semana`),
+  KEY `fk_provisiones_hist_user` (`usuario_id`),
+  CONSTRAINT `fk_provisiones_hist_user` FOREIGN KEY (`usuario_id`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB AUTO_INCREMENT=61 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_bin

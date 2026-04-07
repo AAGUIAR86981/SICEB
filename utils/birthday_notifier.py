@@ -7,23 +7,20 @@ import os
 import logging
 import requests
 
-# Configurar logging
+# Sistema de Notificaciones de Cumpleaños: Para que nadie se quede sin su felicitación
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
 def get_birthdays_today():
-    """
-    Busca empleados que cumplen años hoy.
-    Retorna una lista de diccionarios con info del empleado.
-    """
+    """Busca en la base de datos a los empleados que están de fiesta hoy"""
     conn = get_db_connection()
     if not conn:
-        logging.error("No hay conexión a la base de datos.")
+        logging.error("No pudimos conectar con la base de datos para ver los cumpleaños.")
         return []
     
     cursor = conn.cursor()
     employees = []
     try:
-        # MYSQL/MariaDB query para comparar mes y día con la fecha actual
+        # Buscamos a los trabajadores cuya fecha de nacimiento coincida con el día y mes actual
         query = """
             SELECT nombre, apellido, email, telefono 
             FROM empleados 
@@ -43,26 +40,23 @@ def get_birthdays_today():
                  'telefono': row[3]
              })
     except Exception as e:
-        logging.error(f"Error obteniendo cumpleaños: {e}")
+        logging.error(f"Error al intentar leer la lista de cumpleañeros: {e}")
     finally:
         conn.close()
     
     return employees
 
 def send_birthday_email(employee):
-    """
-    Envía correo de cumpleaños usando SMTP.
-    Requiere configurar MAIL_USERNAME y MAIL_PASSWORD en .env
-    """
+    """Prepara y envía un correo electrónico bonito deseando un feliz cumpleaños"""
     sender_email = os.getenv("MAIL_USERNAME") 
     sender_password = os.getenv("MAIL_PASSWORD")
     
     if not sender_email or not sender_password:
-        logging.warning("Faltan credenciales de correo en .env (MAIL_USERNAME, MAIL_PASSWORD)")
+        logging.warning("No podemos enviar correos porque faltan las credenciales en el archivo .env")
         return
 
     if not employee.get('email'):
-        logging.warning(f"El empleado {employee['nombre']} no tiene email registrado.")
+        logging.warning(f"El cumpleañero {employee['nombre']} no tiene un correo registrado.")
         return
 
     subject = "¡Feliz Cumpleaños!"
@@ -70,12 +64,13 @@ def send_birthday_email(employee):
     Hola {employee['nombre']},
     
     ¡Desde Lider Pollo queremos desearte un muy feliz cumpleaños!
-    Esperamos que pases un día excelente junto a tus seres queridos.
+    Esperamos que pases un día excelente junto a tus seres queridos y que este nuevo año de vida venga cargado de éxitos.
     
     Atentamente,
-    El equipo de RRHH.
+    El equipo de Recursos Humanos.
     """
 
+    # Configuramos el mensaje con el remitente, destinatario y el asunto
     msg = MIMEMultipart()
     msg['From'] = sender_email
     msg['To'] = employee['email']
@@ -83,60 +78,46 @@ def send_birthday_email(employee):
     msg.attach(MIMEText(body, 'plain'))
 
     try:
-        # Configuración por defecto para Gmail (port 587)
-        # Si usas otro proveedor (Outlook, cPanel), cambia el host y puerto.
+        # Usamos el servidor de correo configurado o el de Gmail por defecto
         smtp_host = os.getenv("MAIL_SERVER", "smtp.gmail.com")
         smtp_port = int(os.getenv("MAIL_PORT", 587))
         
         server = smtplib.SMTP(smtp_host, smtp_port)
-        server.starttls()
+        server.starttls() # Seguridad para la conexión
         server.login(sender_email, sender_password)
-        text = msg.as_string()
-        server.sendmail(sender_email, employee['email'], text)
+        server.sendmail(sender_email, employee['email'], msg.as_string())
         server.quit()
-        logging.info(f"Email enviado a {employee['nombre']} ({employee['email']})")
+        logging.info(f"Correo de felicitación enviado con éxito a {employee['nombre']}.")
     except Exception as e:
-        logging.error(f"Error enviando email a {employee['email']}: {e}")
+        logging.error(f"No pudimos enviar el correo a {employee['email']}: {e}")
 
 def send_whatsapp_alert(employee):
-    """
-    Envía mensaje de WhatsApp.
-    NOTA: Para WhatsApp automatizado real se requiere la API de Meta (paga/compleja) 
-    o servicios de terceros como Twilio o CallMeBot.
-    
-    Aquí simularemos el envío o usaremos una API simple si se configura.
-    """
+    """Simula el envío de un mensaje de WhatsApp para felicitar al trabajador"""
     if not employee.get('telefono'):
-        logging.warning(f"El empleado {employee['nombre']} no tiene teléfono registrado.")
+        logging.warning(f"No tenemos el número de teléfono de {employee['nombre']} para enviarle el WhatsApp.")
         return
 
-    message = f"¡Feliz Cumpleaños {employee['nombre']}! Te desea Lider Pollo."
+    message = f"¡Feliz Cumpleaños {employee['nombre']}! Te desea Lider Pollo. 🎂🎉"
     
-    # --- LOGICA REAL (Ejemplo con CallMeBot - Servicio Gratuito Personal) ---
-    # CallMeBot permite enviar mensajes a ti mismo gratis, o pagando para otros.
-    # Twilio es la opción empresarial estándar.
-    
-    # Por ahora, solo logueamos la acción.
-    logging.info(f"[WHATSAPP SIMULADO] Enviando a {employee['telefono']}: {message}")
-    
-    # Si tuvieras una API Key, aquí harías:
-    # requests.post("https://api.whatsapp...", data={...})
+    # Por ahora solo lo registramos en el sistema, ya que requiere una API de pago para enviarse de verdad
+    logging.info(f"[WHATSAPP SIMULADO] Se enviaría a {employee['telefono']}: {message}")
 
 def run_daily_birthday_check():
-    print("--- Iniciando Chequeo de Cumpleaños ---")
+    """Esta es la función principal que se debe correr todos los días para felicitar al personal"""
+    print("--- Iniciando el proceso diario de felicitaciones ---")
     birthdays = get_birthdays_today()
     if not birthdays:
-        print("No hay cumpleaños hoy.")
+        print("Hoy no hay ningún trabajador de cumpleaños.")
         return
 
-    print(f"¡Se encontraron {len(birthdays)} cumpleañeros!")
+    print(f"¡Qué alegría! Encontramos a {len(birthdays)} personas cumpliendo años hoy.")
     for emp in birthdays:
-        print(f"Procesando: {emp['nombre']} {emp['apellido']}")
+        print(f"Felicitando a: {emp['nombre']} {emp['apellido']}")
         send_birthday_email(emp)
         send_whatsapp_alert(emp)
-    print("--- Finalizado ---")
+    print("--- Proceso terminado con éxito ---")
 
 if __name__ == "__main__":
     from dotenv import load_dotenv
-    load_dotenv() # Cargar variables de entorno si se corre manual
+    load_dotenv() # Cargamos las configuraciones si lo corremos manualmente
     run_daily_birthday_check()

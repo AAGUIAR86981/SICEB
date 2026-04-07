@@ -3,24 +3,22 @@ from models.product import Product
 from utils.decorators import login_required, admin_required
 from utils.helpers import log_user_activity
 
-
-
-
+# Módulo de Productos: Aquí administramos el catálogo de todos los artículos que se pueden entregar
 products_bp = Blueprint('products', __name__, url_prefix='/products')
 
 @products_bp.route('/')
-@login_required
+@login_required # Solo usuarios registrados
 def list_products():
-    """Lista todos los productos con filtros"""
+    """Muestra la lista de todos los productos disponibles, permitiendo buscar y filtrar"""
     try:
-        # Obtener parámetros de filtro
+        # Obtenemos lo que el usuario quiere filtrar (Activos, Inactivos o Todos)
         filter_status = request.args.get('status', 'active')  # active, inactive, all
         search_query = request.args.get('search', '').strip()
         
-        # Determinar si incluir inactivos
+        # Avisamos al sistema si debe incluir los productos que ya no se usan
         include_inactive = filter_status in ['inactive', 'all']
         
-        # Obtener productos
+        # Buscamos los productos en el catálogo según los filtros aplicados
         if search_query:
             products = Product.search(search_query, include_inactive)
         else:

@@ -2,6 +2,73 @@
 
 {% block title %}{{ 'Editar' if combo else 'Nuevo' }} Combo{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* Card del formulario */
+    .combo-form-card {
+        background: rgba(255,255,255,0.92);
+        border-radius: 10px;
+        border-left: 4px solid #2c7be5;
+        box-shadow: 0 3px 12px rgba(44,123,229,0.1);
+    }
+
+    .combo-form-card .card-body { padding: 1.75rem; }
+
+    /* Override del global CSS que centra los inputs */
+    .combo-form-card .form-control,
+    .combo-form-card .form-select {
+        text-align: left !important;
+        margin-bottom: 0 !important;
+        font-size: 0.85rem;
+        border: 1.5px solid #c8d9f0;
+        border-radius: 6px;
+        background: rgba(255,255,255,0.88);
+        padding: 0.45rem 0.75rem;
+    }
+
+    .combo-form-card textarea.form-control { height: auto; }
+
+    .combo-form-card .form-control:focus,
+    .combo-form-card .form-select:focus {
+        border-color: #2c7be5;
+        box-shadow: 0 0 0 0.18rem rgba(44,123,229,0.18);
+    }
+
+    .combo-form-card .form-label {
+        text-align: left !important;
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #1a2d45;
+        margin-bottom: 5px;
+    }
+
+    /* Filas de productos */
+    .product-row {
+        background: rgba(234,242,251,0.5);
+        border-radius: 7px;
+        padding: 0.6rem 0.4rem;
+        border: 1px solid rgba(44,123,229,0.1);
+    }
+
+    .product-row .input-group-text {
+        font-size: 0.78rem;
+        background: #eaf2fb;
+        border-color: #c8d9f0;
+        color: #1a2d45;
+    }
+
+    /* Sección de productos */
+    .section-title {
+        font-size: 0.9rem;
+        font-weight: 600;
+        color: #1a2d45;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="main-container">
     <div class="welcome-header mb-4">
@@ -11,7 +78,7 @@
 
     <div class="row">
         <div class="col-lg-10 mx-auto">
-            <div class="card bg-white bg-opacity-75 border-0 shadow-sm">
+            <div class="card combo-form-card border-0 shadow-sm">
                 <div class="card-body p-4">
                     <form action="{{ url_for('combos.edit_combo', combo_id=combo.id) if combo else url_for('combos.create_combo') }}" method="POST" id="comboForm">
                         <div class="row mb-4">

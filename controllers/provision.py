@@ -10,7 +10,7 @@ from models.provision import Provision
 from models.employee import Employee
 from models.combos_model import ComboModel
 
-# Configurar logging
+# Configuramos el sistema de registro (logs) específicamente para el proceso de entrega de beneficios
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 f_handler = logging.FileHandler('provision_debug.log', mode='w')
@@ -19,13 +19,15 @@ f_formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(mess
 f_handler.setFormatter(f_formatter)
 logger.addHandler(f_handler)
 
+# Creamos el módulo de 'provision' para organizar todas las rutas relacionadas con las entregas
 provision_bp = Blueprint('provision', __name__)
 
 def check_system_time_integrity():
-    """Retorna True si la hora del sistema coincide con la de internet (+/- 5 min)"""
+    """Seguridad: Verifica que la hora de la computadora coincida con la hora real de Internet.
+    Esto evita que alguien cambie la fecha del PC para intentar adelantar una entrega de combos.
+    """
     try:
-        # Consultar Caracas (usamos HTTP para evitar fallos de SSL por fecha incorrecta si queremos, 
-        # pero mantenemos HTTP por ahora o manejamos la excepción)
+        # Consultamos el reloj mundial oficial para Caracas
         api_url = "http://worldtimeapi.org/api/timezone/America/Caracas"
         response = requests.get(api_url, timeout=4)
         if response.status_code == 200:
@@ -33,11 +35,13 @@ def check_system_time_integrity():
             internet_timestamp = data['unixtime']
             system_timestamp = datetime.now().timestamp()
             
+            # Calculamos la diferencia en segundos
             diff = abs(system_timestamp - internet_timestamp)
             
-            if diff > 300: # 5 minutos
-                logger.error(f"FRAUDE CRÍTICO DETECTADO: Desfase de {diff} segundos.")
-                return False, f"Intento de manipulación detectado ({diff/60:.1f} min)"
+            # Si hay más de 5 minutos de diferencia, sospechamos que el reloj fue alterado
+            if diff > 300: 
+                logger.error(f"¡ALERTA DE SEGURIDAD! El reloj del servidor está desfasado por {diff} segundos.")
+                return False, f"Se detectó un posible cambio manual en la fecha ({diff/60:.1f} min de diferencia)"
             
             return True, "Sincronizado"
             
@@ -299,15 +303,32 @@ def consultar_beneficios():
         if filters['tipo_nomina'] in tipo_nomina_map:
             report_filters['tipo_nomina'] = tipo_nomina_map[filters['tipo_nomina']]
         
-        reporte = Provision.get_beneficiary_report(report_filters)
-        for row in reporte:
+        reporte_completo = Provision.get_beneficiary_report(report_filters)
+        for row in reporte_completo:
             row['productos_list'] = from_json(row['productos']) if isinstance(row['productos'], str) else (row['productos'] if row['productos'] else [])
 
-        return render_template('consultar_beneficios.html', reporte=reporte, filters=filters)
+        # ── Paginación ──
+        per_page    = 10
+        page        = max(1, int(request.args.get('page', 1)))
+        total       = len(reporte_completo)
+        total_pages = max(1, (total + per_page - 1) // per_page)
+        page        = min(page, total_pages)
+        start       = (page - 1) * per_page
+        reporte     = reporte_completo[start:start + per_page]
+
+        return render_template(
+            'consultar_beneficios.html',
+            reporte=reporte,
+            filters=filters,
+            page=page,
+            total_pages=total_pages,
+            total=total,
+        )
     except Exception as e:
         logger.error(f"Error beneficios: {e}")
         flash('Error al cargar beneficios', 'error')
         return redirect(url_for('provision.historial_provisiones'))
+
 
 @provision_bp.route('/exportar_reporte_beneficiarios')
 @login_required

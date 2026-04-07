@@ -1,4 +1,4 @@
-﻿{% extends 'layout.html' %}
+{% extends 'layout.html' %}
 
 {% block title %}Restablecer Contraseña{% endblock %}
 
@@ -16,11 +16,16 @@
             <li>Longitud de 8 o más caracteres</li>
         </ul>
 
-        <form action="/nuevaclave" method="POST">
+        <form action="{% if token %}{{ url_for('auth.reset_password_token', token=token) }}{% else %}/nuevaclave{% endif %}" method="POST">
             <div class="form-group">
                 <label for="password" class="form-label">Nueva Contraseña:</label>
                 <input type="password" id="password" name="password" class="form-control" placeholder="Nueva Contraseña"
                     pattern="((?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[\W]).{8,64})" required>
+            </div>
+
+            <div class="form-group mt-3">
+                <label for="confirm_password" class="form-label">Confirmar Contraseña:</label>
+                <input type="password" id="confirm_password" name="confirm_password" class="form-control" placeholder="Repetir Contraseña" required>
             </div>
 
             <div class="btn-center-container">

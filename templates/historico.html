@@ -2,45 +2,52 @@
 {% block title %}Histórico de Provisiones{% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1>Estadisticas de Provisiones</h1>
-        <a href="{{ url_for('history.descargar_historico_excel') }}" class="btn btn-success">
-            📊 Descargar Excel
+<div class="container-fluid mt-4">
+    <div class="d-flex justify-content-between align-items-center mb-4 welcome-header shadow-sm">
+        <div>
+            <h1 class="text-white mb-0"><i class="fas fa-history me-2"></i>Estadísticas de Provisiones</h1>
+            <p class="text-white-50 mb-0">Seguimiento detallado de las entregas de beneficios</p>
+        </div>
+        <a href="{{ url_for('history.descargar_historico_excel') }}" class="btn btn-light btn-lg rounded-pill shadow-sm">
+            <i class="fas fa-file-excel me-2 text-success"></i>Descargar Excel
         </a>
     </div>
 
     <!-- Estadísticas Resumen -->
     <div class="row mb-4">
         <div class="col-md-3">
-            <div class="card text-white bg-primary">
-                <div class="card-body text-center">
-                    <h5>Total Provisiones</h5>
-                    <h3>{{ session.provLogs|length }}</h3>
+            <div class="card bg-primary text-white shadow-sm border-0 h-100">
+                <div class="card-body text-center p-4">
+                    <div class="feature-icon text-white-50 mb-2"><i class="fas fa-cube"></i></div>
+                    <h5 class="card-title text-uppercase small ls-1">Total Provisiones</h5>
+                    <h2 class="display-6 fw-bold mb-0">{{ total_records if total_records else (logs|length) }}</h2>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card text-white bg-success">
-                <div class="card-body text-center">
-                    <h5>Aprobados</h5>
-                    <h3>{{ session.totalAprob }}</h3>
+            <div class="card bg-success text-white shadow-sm border-0 h-100">
+                <div class="card-body text-center p-4">
+                    <div class="feature-icon text-white-50 mb-2"><i class="fas fa-check-circle"></i></div>
+                    <h5 class="card-title text-uppercase small ls-1">Aprobados</h5>
+                    <h2 class="display-6 fw-bold mb-0">{{ totalAprob | int }}</h2>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card text-white bg-danger">
-                <div class="card-body text-center">
-                    <h5>Rechazados</h5>
-                    <h3>{{ session.totalRecha }}</h3>
+            <div class="card bg-danger text-white shadow-sm border-0 h-100">
+                <div class="card-body text-center p-4">
+                    <div class="feature-icon text-white-50 mb-2"><i class="fas fa-times-circle"></i></div>
+                    <h5 class="card-title text-uppercase small ls-1">Rechazados</h5>
+                    <h2 class="display-6 fw-bold mb-0">{{ totalRecha | int }}</h2>
                 </div>
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card text-white bg-info">
-                <div class="card-body text-center">
-                    <h5>Total General</h5>
-                    <h3>{{ session.total }}</h3>
+            <div class="card bg-info text-white shadow-sm border-0 h-100">
+                <div class="card-body text-center p-4">
+                    <div class="feature-icon text-white-50 mb-2"><i class="fas fa-users"></i></div>
+                    <h5 class="card-title text-uppercase small ls-1">Total General</h5>
+                    <h2 class="display-6 fw-bold mb-0">{{ total | int }}</h2>
                 </div>
             </div>
         </div>
@@ -49,35 +56,40 @@
     <!-- Sección de Gráficos -->
     <div class="row mb-4">
         <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-primary text-white">
-                    <h5 class="mb-0">📈 Distribución General</h5>
+            <div class="card border-0 shadow-sm glass-card h-100">
+                <div class="card-header bg-primary text-white border-0 py-3">
+                    <h5 class="mb-0"><i class="fas fa-chart-pie me-2"></i>Distribución General</h5>
                 </div>
-                <div class="card-body text-center">
-                    <div class="piechart-container">
-                        <div id="grafico-principal" class="piechart" style="background-image: conic-gradient(
-                            #28a745 0 {{ session.aprobados }}deg, 
-                            #dc3545 0 {{ session.aprobados + session.rechazados }}deg
-                        ); width: 250px; height: 250px; border-radius: 50%; margin: 0 auto;"></div>
+                <div class="card-body text-center d-flex flex-column justify-content-center">
+                    <div class="piechart-container mb-4">
+                        <div id="grafico-principal" class="piechart shadow-lg" style="background-image: conic-gradient(
+                            #1b7a4a 0 {{ aprobados_angle }}deg, 
+                            #e74c3c 0 {{ aprobados_angle + rechazados_angle }}deg
+                        ); width: 220px; height: 220px; border-radius: 50%; margin: 0 auto; border: 8px solid rgba(255,255,255,0.5);"></div>
                     </div>
-                    <div class="mt-3">
-                        <p><span style="color:#28a745">●</span> Aprobados: <strong>{{ session.totalAprob }}</strong> ({{
-                            "%.1f"|format((session.totalAprob/session.total*100) if session.total > 0 else 0) }}%)</p>
-                        <p><span style="color:#dc3545">●</span> Rechazados: <strong>{{ session.totalRecha }}</strong>
-                            ({{ "%.1f"|format((session.totalRecha/session.total*100) if session.total > 0 else 0) }}%)
-                        </p>
+                    <div class="chart-legend d-flex justify-content-center gap-4">
+                        <div class="legend-item">
+                            <span class="badge bg-success bullet-dot"></span> 
+                            <span class="small fw-bold">Aprobados:</span> 
+                            <span class="text-success fw-bold">{{ "%.1f"|format((totalAprob/total*100) if total > 0 else 0) }}%</span>
+                        </div>
+                        <div class="legend-item">
+                            <span class="badge bg-danger bullet-dot"></span> 
+                            <span class="small fw-bold">Rechazados:</span> 
+                            <span class="text-danger fw-bold">{{ "%.1f"|format((totalRecha/total*100) if total > 0 else 0) }}%</span>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
 
         <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-info text-white">
-                    <h5 class="mb-0">📊 Por Tipo de Nómina</h5>
+            <div class="card border-0 shadow-sm glass-card h-100">
+                <div class="card-header bg-info text-white border-0 py-3">
+                    <h5 class="mb-0"><i class="fas fa-chart-bar me-2"></i>Por Tipo de Nómina</h5>
                 </div>
                 <div class="card-body">
-                    <div id="grafico-nominas" style="height: 250px;">
+                    <div id="grafico-nominas" style="height: 280px; width: 100%;">
                         <canvas id="nominasChart"></canvas>
                     </div>
                 </div>
@@ -86,50 +98,54 @@
     </div>
 
     <!-- Tabla de Historial -->
-    <div class="card">
-        <div class="card-header">
-            <h5 class="mb-0">Detalle de Provisiones Realizadas</h5>
+    <div class="card border-0 shadow-lg glass-card">
+        <div class="card-header bg-dark text-white border-0 py-3 d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-list me-2"></i>Detalle de Provisiones Realizadas</h5>
+            <span class="badge bg-primary rounded-pill px-3">{{ total_records if total_records else logs|length }} registros</span>
         </div>
-        <div class="card-body">
-            {% if session.provLogs %}
+        <div class="card-body p-0">
+            {% if logs %}
             <div class="table-responsive">
-                <table class="table table-striped table-bordered table-hover">
-                    <thead style="background-color: #6495ED; color: white;">
+                <table class="table table-hover mb-0">
+                    <thead class="table-dark">
                         <tr>
-                            <th>Semana</th>
+                            <th class="ps-4">Semana</th>
                             <th>Tipo Nómina</th>
-                            <th>Aprobados</th>
-                            <th>Rechazados</th>
+                            <th class="text-center">Aprobados</th>
+                            <th class="text-center">Rechazados</th>
                             <th>Usuario</th>
                             <th>IP</th>
                             <th>Fecha Provisión</th>
-                            <th>Acciones</th>
+                            <th class="text-center pe-4">Acciones</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {% for log in session.provLogs %}
-                        {% set tipo_nomina_texto = 'Semanal' if log[3] == '1' else 'Quincenal' if log[3] == '2' else
-                        log[3] %}
-                        <tr class="fila-provision" data-semana="{{ log[0] }}" data-aprobados="{{ log[1] }}"
-                            data-rechazados="{{ log[2] }}" data-tiponom="{{ tipo_nomina_texto }}">
-                            <td>{{ log[0] }}</td>
+                        {% for log in logs %}
+                        {% set tipo_nomina_texto = 'Semanal' if log.tipo_nomina == '1' or log.tipo_nomina == 'Semanal' else 'Quincenal' %}
+                        <tr class="fila-provision" 
+                            data-semana="{{ log.semana }}" 
+                            data-aprobados="{{ log.cant_aprobados }}" 
+                            data-rechazados="{{ log.cant_rechazados }}" 
+                            data-tiponom="{{ tipo_nomina_texto }}">
+                            <td class="ps-4 fw-bold text-primary">#{{ log.semana }}</td>
                             <td>
-                                <span
-                                    class="badge {% if tipo_nomina_texto == 'Semanal' %}bg-warning{% else %}bg-info{% endif %}">
+                                <span class="badge rounded-pill {% if tipo_nomina_texto == 'Semanal' %}bg-warning text-dark{% else %}bg-info{% endif %} px-3">
                                     {{ tipo_nomina_texto }}
                                 </span>
                             </td>
-                            <td class="text-success fw-bold">{{ log[1] }}</td>
-                            <td class="text-danger fw-bold">{{ log[2] }}</td>
-                            <td>{{ log[4] }}</td>
-                            <td><code class="text-primary small">{{ log[6] if log|length > 6 else '-' }}</code></td>
-                            <td>{{ log[5].strftime('%d/%m/%Y %H:%M') if log[5] else 'N/A' }}</td>
-                            <td>
-                                <button class="btn btn-sm btn-outline-primary ver-detalle" data-bs-toggle="tooltip"
-                                    title="Ver gráfico detallado" data-semana="{{ log[0] }}"
-                                    data-aprobados="{{ log[1] }}" data-rechazados="{{ log[2] }}"
-                                    data-tiponom="{{ tipo_nomina_texto }}">
-                                    📊
+                            <td class="text-center text-success fw-bold">{{ log.cant_aprobados }}</td>
+                            <td class="text-center text-danger fw-bold">{{ log.cant_rechazados }}</td>
+                            <td><i class="fas fa-user-circle me-1 text-muted"></i>{{ log.usuario_nombre }}</td>
+                            <td><code class="text-secondary small">{{ log.ip_address if log.ip_address else '-' }}</code></td>
+                            <td>{{ log.fecha_creacion.strftime('%d/%m/%Y %H:%M') if log.fecha_creacion else 'N/A' }}</td>
+                            <td class="text-center pe-4">
+                                <button class="btn btn-sm btn-outline-primary rounded-circle ver-detalle" 
+                                        data-bs-toggle="tooltip" title="Ver detalle visual"
+                                        data-semana="{{ log.semana }}" 
+                                        data-aprobados="{{ log.cant_aprobados }}" 
+                                        data-rechazados="{{ log.cant_rechazados }}" 
+                                        data-tiponom="{{ tipo_nomina_texto }}">
+                                    <i class="fas fa-eye"></i>
                                 </button>
                             </td>
                         </tr>
@@ -137,12 +153,45 @@
                     </tbody>
                 </table>
             </div>
+            
+            <!-- Paginación Premium -->
+            {% if total_pages > 1 %}
+            <div class="card-footer bg-transparent border-0 py-4">
+                <nav aria-label="Navegación de historial">
+                    <ul class="pagination pagination-md justify-content-center mb-0">
+                        <li class="page-item {% if page == 1 %}disabled{% endif %}">
+                            <a class="page-link rounded-pill-start px-4" href="{{ url_for('history.history', page=page-1) }}">
+                                <i class="fas fa-chevron-left me-1"></i> Anterior
+                            </a>
+                        </li>
+                        
+                        {% for p in range(1, total_pages + 1) %}
+                        {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
+                        <li class="page-item {% if page == p %}active{% endif %}">
+                            <a class="page-link" href="{{ url_for('history.history', page=p) }}">{{ p }}</a>
+                        </li>
+                        {% elif p == page - 3 or p == page + 3 %}
+                        <li class="page-item disabled"><span class="page-link">...</span></li>
+                        {% endif %}
+                        {% endfor %}
+                        
+                        <li class="page-item {% if page == total_pages %}disabled{% endif %}">
+                            <a class="page-link rounded-pill-end px-4" href="{{ url_for('history.history', page=page+1) }}">
+                                Siguiente <i class="fas fa-chevron-right ms-1"></i>
+                            </a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+            {% endif %}
+
             {% else %}
-            <div class="alert alert-info text-center">
-                <h4>No hay provisiones en el historial</h4>
-                <p>Realiza una provisión para ver el historial aquí.</p>
-                <a href="{{ url_for('provision.make_provision') }}" class="btn btn-primary">
-                    Realizar Provisión
+            <div class="text-center p-5">
+                <div class="mb-3 text-muted display-4"><i class="fas fa-folder-open"></i></div>
+                <h4 class="text-muted">No hay provisiones en el historial</h4>
+                <p class="text-secondary">Comienza realizando una nueva provisión para ver los datos aquí.</p>
+                <a href="{{ url_for('provision.make_provision') }}" class="btn btn-primary btn-lg rounded-pill px-5 mt-3 shadow-sm">
+                    <i class="fas fa-plus me-2"></i>Realizar Provisión
                 </a>
             </div>
             {% endif %}
@@ -150,59 +199,106 @@
     </div>
 
     <!-- Botones de Navegación -->
-    <div class="mt-4 text-center">
-        <a href="{{ url_for('provision.make_provision') }}" class="btn btn-primary">
-            📋 Realizar Nueva Provisión
+    <div class="mt-5 mb-5 text-center">
+        <a href="{{ url_for('provision.make_provision') }}" class="btn btn-primary btn-lg rounded-pill px-5 shadow-sm">
+            <i class="fas fa-clipboard-list me-2"></i>Nueva Provisión
         </a>
-        <a href="{{ url_for('main.main_page') }}" class="btn btn-outline-secondary">
-            🏠 Ir al Inicio
+        <a href="{{ url_for('main.main_page') }}" class="btn btn-outline-secondary btn-lg rounded-pill px-5 ms-3 shadow-sm">
+            <i class="fas fa-home me-2"></i>Inicio
         </a>
     </div>
 </div>
 
 <!-- Modal para gráfico detallado -->
 <div class="modal fade" id="modalDetalle" tabindex="-1">
-    <div class="modal-dialog modal-sm">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Detalle - Semana <span id="modal-semana"></span></h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content glass-card shadow-2xl border-0">
+            <div class="modal-header bg-primary text-white border-0">
+                <h5 class="modal-title fw-bold"><i class="fas fa-info-circle me-2"></i>Detalle - Semana <span id="modal-semana"></span></h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <div class="modal-body text-center">
-                <div class="mb-3">
-                    <span class="badge bg-secondary" id="modal-tiponom"></span>
+            <div class="modal-body text-center p-5">
+                <div class="mb-4">
+                    <span class="badge rounded-pill bg-light text-dark shadow-sm px-4 py-2 fs-6" id="modal-tiponom"></span>
                 </div>
-                <div id="grafico-modal" class="piechart"
-                    style="width: 200px; height: 200px; border-radius: 50%; margin: 0 auto;"></div>
-                <div class="mt-3">
-                    <p><span style="color:#28a745">●</span> Aprobados: <strong id="modal-aprobados"></strong></p>
-                    <p><span style="color:#dc3545">●</span> Rechazados: <strong id="modal-rechazados"></strong></p>
-                    <p>Total: <strong id="modal-total"></strong></p>
+                <div id="grafico-modal" class="piechart shadow-lg mb-4"
+                    style="width: 240px; height: 240px; border-radius: 50%; margin: 0 auto; border: 8px solid white;"></div>
+                
+                <div class="row g-3 mt-4">
+                    <div class="col-6">
+                        <div class="p-3 bg-success bg-opacity-10 rounded-3">
+                            <h6 class="text-success mb-1 small text-uppercase fw-bold">Aprobados</h6>
+                            <h4 class="mb-0 text-success fw-bold" id="modal-aprobados"></h4>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="p-3 bg-danger bg-opacity-10 rounded-3">
+                            <h6 class="text-danger mb-1 small text-uppercase fw-bold">Rechazados</h6>
+                            <h4 class="mb-0 text-danger fw-bold" id="modal-rechazados"></h4>
+                        </div>
+                    </div>
+                    <div class="col-12">
+                        <div class="p-3 bg-primary bg-opacity-10 rounded-3">
+                            <h6 class="text-primary mb-1 small text-uppercase fw-bold">Total Trabajados</h6>
+                            <h4 class="mb-0 text-primary fw-bold" id="modal-total"></h4>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Incluir Chart.js para gráficos avanzados -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <style>
+    .glass-card {
+        background: rgba(255, 255, 255, 0.8) !important;
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.4);
+    }
+    
+    .ls-1 { letter-spacing: 1px; }
+    
     .piechart {
-        border: 3px solid #fff;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
-
-    .fila-provision:hover {
-        background-color: #f8f9fa;
-        cursor: pointer;
+    
+    .piechart:hover {
+        transform: scale(1.05);
     }
-
-    .table-hover tbody tr:hover {
-        transform: translateY(-2px);
-        transition: all 0.2s ease;
+    
+    .bullet-dot {
+        width: 10px;
+        height: 10px;
+        padding: 0;
+        border-radius: 50%;
+        display: inline-block;
+        margin-right: 5px;
+    }
+    
+    .rounded-pill-start {
+        border-top-left-radius: 50px !important;
+        border-bottom-left-radius: 50px !important;
+    }
+    
+    .rounded-pill-end {
+        border-top-right-radius: 50px !important;
+        border-bottom-right-radius: 50px !important;
+    }
+    
+    .pagination .page-link {
+        border-color: #dee2e6;
+        color: var(--secondary-color);
+        margin: 0 2px;
+    }
+    
+    .pagination .page-item.active .page-link {
+        background-color: var(--secondary-color);
+        border-color: var(--secondary-color);
     }
 </style>
+
+<!-- Incluir Chart.js para gráficos avanzados -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -210,137 +306,107 @@
         const tooltips = document.querySelectorAll('[data-bs-toggle="tooltip"]');
         tooltips.forEach(tooltip => new bootstrap.Tooltip(tooltip));
 
-        // Gráfico de nóminas con Chart.js - CORREGIDO
+        // Configuración global de Chart.js
+        Chart.defaults.font.family = "'Segoe UI', Roboto, Helvetica, Arial, sans-serif";
+        Chart.defaults.color = '#5a6d82';
+
+        // Gráfico de nóminas con Chart.js
         function inicializarGraficoNominas() {
             const ctx = document.getElementById('nominasChart').getContext('2d');
 
-            // Calcular datos por tipo de nómina - CORREGIDO
             const nominas = {
                 'Semanal': { aprobados: 0, rechazados: 0 },
                 'Quincenal': { aprobados: 0, rechazados: 0 }
             };
 
-            // Procesar cada registro del historial
-            {% for log in session.provLogs %}
-            {% set tipo_nomina = 'Semanal' if log[3] == '1' else 'Quincenal' if log[3] == '2' else log[3] %}
-const aprobados{{ loop.index }} = {{ log[1]|default(0) }};
-const rechazados{{ loop.index }} = {{ log[2]|default(0) }};
-
-    if ("{{ tipo_nomina }}" === "Semanal") {
-        nominas.Semanal.aprobados += aprobados{{ loop.index }};
-        nominas.Semanal.rechazados += rechazados{{ loop.index }};
-    } else if ("{{ tipo_nomina }}" === "Quincenal") {
-        nominas.Quincenal.aprobados += aprobados{{ loop.index }};
-        nominas.Quincenal.rechazados += rechazados{{ loop.index }};
-    }
-    {% endfor %}
-
-    // Crear el gráfico
-    new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: ['Semanal', 'Quincenal'],
-            datasets: [
-                {
-                    label: 'Aprobados',
-                    data: [nominas.Semanal.aprobados, nominas.Quincenal.aprobados],
-                    backgroundColor: '#28a745',
-                    borderColor: '#28a745',
-                    borderWidth: 1
-                },
-                {
-                    label: 'Rechazados',
-                    data: [nominas.Semanal.rechazados, nominas.Quincenal.rechazados],
-                    backgroundColor: '#dc3545',
-                    borderColor: '#dc3545',
-                    borderWidth: 1
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    title: {
-                        display: true,
-                        text: 'Cantidad de Empleados'
-                    }
-                },
-                x: {
-                    title: {
-                        display: true,
-                        text: 'Tipo de Nómina'
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    position: 'top',
-                },
-                title: {
-                    display: true,
-                    text: 'Distribución por Tipo de Nómina'
-                }
+            // Procesamos los datos que vienen del backend
+            {% for log in logs %}
+            {% set tipo_nomina = 'Semanal' if log.tipo_nomina == '1' or log.tipo_nomina == 'Semanal' else 'Quincenal' %}
+            if ("{{ tipo_nomina }}" === "Semanal") {
+                nominas.Semanal.aprobados += {{ log.cant_aprobados or 0 }};
+                nominas.Semanal.rechazados += {{ log.cant_rechazados or 0 }};
+            } else {
+                nominas.Quincenal.aprobados += {{ log.cant_aprobados or 0 }};
+                nominas.Quincenal.rechazados += {{ log.cant_rechazados or 0 }};
             }
+            {% endfor %}
+
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Nómina Semanal', 'Nómina Quincenal'],
+                    datasets: [
+                        {
+                            label: 'Aprobados',
+                            data: [nominas.Semanal.aprobados, nominas.Quincenal.aprobados],
+                            backgroundColor: '#1b7a4a',
+                            borderRadius: 6,
+                            barPercentage: 0.6
+                        },
+                        {
+                            label: 'Rechazados',
+                            data: [nominas.Semanal.rechazados, nominas.Quincenal.rechazados],
+                            backgroundColor: '#e74c3c',
+                            borderRadius: 6,
+                            barPercentage: 0.6
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' },
+                        tooltip: { backgroundColor: 'rgba(0,0,0,0.8)', padding: 12 }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { drawBorder: false, color: 'rgba(0,0,0,0.05)' } },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
         }
-    });
-    }
 
-    // Función para mostrar gráfico detallado en modal
-    function mostrarDetalleProvision(semana, aprobados, rechazados, tipoNom) {
-        const total = aprobados + rechazados;
-        const aprobadosGrados = total > 0 ? (aprobados / total) * 360 : 0;
-        const rechazadosGrados = total > 0 ? (rechazados / total) * 360 : 0;
+        // Función para mostrar gráfico detallado en modal
+        function mostrarDetalleProvision(semana, aprobados, rechazados, tipoNom) {
+            const total = aprobados + rechazados;
+            const aprobadosGrados = total > 0 ? (aprobados / total) * 360 : 0;
 
-        // Actualizar modal
-        document.getElementById('modal-semana').textContent = semana;
-        document.getElementById('modal-tiponom').textContent = tipoNom;
-        document.getElementById('modal-aprobados').textContent = aprobados;
-        document.getElementById('modal-rechazados').textContent = rechazados;
-        document.getElementById('modal-total').textContent = total;
+            document.getElementById('modal-semana').textContent = semana;
+            document.getElementById('modal-tiponom').textContent = tipoNom;
+            document.getElementById('modal-aprobados').textContent = aprobados;
+            document.getElementById('modal-rechazados').textContent = rechazados;
+            document.getElementById('modal-total').textContent = total;
 
-        // Actualizar gráfico del modal
-        const graficoModal = document.getElementById('grafico-modal');
-        graficoModal.style.backgroundImage = `conic-gradient(
-            #28a745 0 ${aprobadosGrados}deg, 
-            #dc3545 0 ${aprobadosGrados + rechazadosGrados}deg
-        )`;
+            const graficoModal = document.getElementById('grafico-modal');
+            graficoModal.style.backgroundImage = `conic-gradient(
+                #1b7a4a 0 ${aprobadosGrados}deg, 
+                #e74c3c ${aprobadosGrados}deg 360deg
+            )`;
 
-        // Mostrar modal
-        const modal = new bootstrap.Modal(document.getElementById('modalDetalle'));
-        modal.show();
-    }
+            const modal = new bootstrap.Modal(document.getElementById('modalDetalle'));
+            modal.show();
+        }
 
-    // Event listeners para las filas
-    document.querySelectorAll('.fila-provision').forEach(fila => {
-        fila.addEventListener('click', function (e) {
-            if (!e.target.closest('button')) {
-                const semana = this.getAttribute('data-semana');
-                const aprobados = parseInt(this.getAttribute('data-aprobados'));
-                const rechazados = parseInt(this.getAttribute('data-rechazados'));
-                const tipoNom = this.getAttribute('data-tiponom');
-
-                mostrarDetalleProvision(semana, aprobados, rechazados, tipoNom);
-            }
+        // Click en filas (excepto si se hace click en el botón directamente)
+        document.querySelectorAll('.fila-provision').forEach(fila => {
+            fila.addEventListener('click', function (e) {
+                if (!e.target.closest('button')) {
+                    const data = this.dataset;
+                    mostrarDetalleProvision(data.semana, parseInt(data.aprobados), parseInt(data.rechazados), data.tiponom);
+                }
+            });
         });
-    });
 
-    // Event listeners para botones de detalle
-    document.querySelectorAll('.ver-detalle').forEach(boton => {
-        boton.addEventListener('click', function () {
-            const semana = this.getAttribute('data-semana');
-            const aprobados = parseInt(this.getAttribute('data-aprobados'));
-            const rechazados = parseInt(this.getAttribute('data-rechazados'));
-            const tipoNom = this.getAttribute('data-tiponom');
-
-            mostrarDetalleProvision(semana, aprobados, rechazados, tipoNom);
+        // Click en botones de detalle
+        document.querySelectorAll('.ver-detalle').forEach(boton => {
+            boton.addEventListener('click', function () {
+                const data = this.dataset;
+                mostrarDetalleProvision(data.semana, parseInt(data.aprobados), parseInt(data.rechazados), data.tiponom);
+            });
         });
-    });
 
-    // Inicializar gráficos
-    inicializarGraficoNominas();
-});
+        inicializarGraficoNominas();
+    });
 </script>
 {% endblock %}

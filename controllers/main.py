@@ -2,13 +2,14 @@ from flask import Blueprint, render_template, session, flash, redirect, url_for
 from config.database import get_db_connection
 from utils.decorators import login_required
 
+# Módulo Principal: Esta es la pantalla que ve el usuario apenas entra al sistema
 main_bp = Blueprint('main', __name__)
 
 
 @main_bp.route('/main')
-@login_required
+@login_required # Seguridad: Solo para quienes ya pusieron su clave correctamente
 def main_page():
-    """Página principal después del login """
+    """Carga y muestra el tablero principal (Dashboard) con el resumen de todo el sistema"""
     conn = None
     cursor = None
     try:
@@ -16,11 +17,12 @@ def main_page():
         conn = get_db_connection()
         cursor = conn.cursor()
 
+        # Buscamos el nombre completo de la persona que está conectada para saludarla
         cursor.execute('SELECT CONCAT(name, " ", lastname) AS full_name FROM users WHERE id=%s', (currentUserID,))
         currentUser = cursor.fetchone()
         session['user'] = currentUser[0] if currentUser else session['userAlias']
 
-        # Obtener estadísticas para el dashboard
+        # --- PREPARACIÓN DE LAS ESTADÍSTICAS DEL TABLERO ---
         from models.employee import Employee
         from models.provision import Provision
         
@@ -40,6 +42,8 @@ def main_page():
         return render_template('main.html', stats=stats, ultimas_provisiones=ultimas_provisiones)
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()
         flash('Error: '+str(e))
         return redirect(url_for('auth.index'))
     finally:

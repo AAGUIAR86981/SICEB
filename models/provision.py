@@ -5,19 +5,13 @@ import logging
 import mariadb
 from models.employee import Employee
 
+# Configuramos el sistema de log para anotar cualquier evento importante en este módulo de provisiones
 logger = logging.getLogger(__name__)
 
 class Provision:
     @staticmethod
     def get_type_and_week():
-        """Determina el tipo de provisión y el número de semana/quincena real.
-        
-        Retorna:
-          - semana_iso: número de semana ISO del año (1–53), único dentro del año
-          - quincena:   entero MES*10 + Q, donde Q=1 (días 1-15) o Q=2 (días 16-31).
-                        Ej: febrero 2ª quincena → 22, enero 1ª quincena → 11.
-                        Esto lo hace único por mes dentro de un mismo año.
-        """
+        """Calcula de forma automática qué número de semana o quincena nos toca hoy"""
         serverDatetime = datetime.now()
         dia_del_mes = serverDatetime.day
         mes = serverDatetime.month

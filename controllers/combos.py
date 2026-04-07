@@ -3,15 +3,19 @@ from models.combos_model import ComboModel
 from utils.decorators import login_required
 from utils.template_helpers import check_permission
 
+# Módulo de Combos: Aquí definimos qué bolsas o paquetes de productos se entregan a los empleados
 combos_bp = Blueprint('combos', __name__, url_prefix='/combos')
 
 @combos_bp.route('/')
-@login_required
+@login_required # Seguridad: Solo usuarios que hayan entrado al sistema
 def list_combos():
+    """Muestra la lista de todos los combos (paquetes) creados hasta ahora"""
+    # Seguridad: Solo quienes tengan el permiso 'manage_combos' pueden entrar aquí
     if not check_permission('manage_combos'):
-        flash('No tienes permiso para gestionar combos.')
+        flash('Lo sentimos, usted no tiene permiso para administrar los combos.')
         return redirect(url_for('main.main_page'))
         
+    # Traemos todos los combos registrados en la base de datos
     combos = ComboModel.get_all_combos()
     return render_template('combos/list.html', combos=combos)
 

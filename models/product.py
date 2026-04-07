@@ -13,11 +13,11 @@ class Product:
         cursor = None
         try:
             conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True)
+            cursor = conn.cursor(dictionary=1)
             
-            query = "SELECT * FROM catalogo_productos"
+            query = "SELECT id, nombre, categoria, activo, created_at FROM catalogo_productos"
             if not include_inactive:
-                query += " WHERE activo = TRUE"
+                query += " WHERE activo = 1"
             query += " ORDER BY nombre ASC"
             
             cursor.execute(query)
@@ -36,8 +36,8 @@ class Product:
         cursor = None
         try:
             conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True)
-            cursor.execute("SELECT * FROM catalogo_productos WHERE id = %s", (product_id,))
+            cursor = conn.cursor(dictionary=1)
+            cursor.execute("SELECT id, nombre, categoria, activo, created_at FROM catalogo_productos WHERE id = %s", (product_id,))
             return cursor.fetchone()
         except Exception as e:
             logger.error(f"Error getting product by id: {e}")
@@ -53,10 +53,10 @@ class Product:
         cursor = None
         try:
             conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True)
+            cursor = conn.cursor(dictionary=1)
             
             sql = """
-                SELECT * FROM catalogo_productos 
+                SELECT id, nombre, categoria, activo, created_at FROM catalogo_productos 
                 WHERE (nombre LIKE %s OR categoria LIKE %s)
             """
             params = [f"%{query}%", f"%{query}%"]
@@ -189,7 +189,7 @@ class Product:
             result = cursor.fetchone()
             return result[0] if result else 0
         except Exception as e:
-            logger.error(f"Error counting products: {e}")
+            logger.error(f"Error al contar los productos: {e}")
             return 0
         finally:
             if cursor: cursor.close()
@@ -197,14 +197,16 @@ class Product:
 
     @staticmethod
     def get_delivery_summary():
-        """Obtiene un resumen de unidades entregadas procesando el JSON de provisiones"""
+        """Genera un reporte acumulado de cuántas unidades de cada producto se han entregado"""
         conn = None
         cursor = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor(dictionary=True)
-            ## Es importante usar dictionary=True para que la interfaz 
-            # reciba nombres de columnas como 'Producto' en vez de índices numéricos
+            
+            # --- LÓGICA ESPECIAL PARA DATOS JSON ---
+            # Como los productos entregados se guardan en una lista de texto (JSON) en el historial,
+            # usamos 'JSON_TABLE' para abrir esa lista y poder sumar las cantidades entregadas.
             sql = """
                 SELECT 
                     jt.nombre_producto AS Producto,
@@ -219,16 +221,14 @@ class Product:
                     )
                 ) AS jt
                 GROUP BY jt.nombre_producto
-                ORDER BY total_unidades DESC
+                ORDER BY Total_Unidades DESC
             """
             
             cursor.execute(sql)
             return cursor.fetchall()
         except Exception as e:
-            logger.error(f"Error en reporte de entregas: {e}")
+            logger.error(f"Hubo un problema al generar el reporte de entregas acumuladas: {e}")
             return []
         finally:
-            if cursor:
-                cursor.close()
-            if conn:
-                conn.close()
+            if cursor: cursor.close()
+            if conn: conn.close()

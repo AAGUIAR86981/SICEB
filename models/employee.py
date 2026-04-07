@@ -1,10 +1,11 @@
 from config.database import get_db_connection
 import logging
 
-# Configurar logging
+# Sistema de gestión de Empleados: Aquí es donde Vive toda la lógica de datos del personal
 logger = logging.getLogger(__name__)
 
 class Employee:
+    """Clase para representar y manejar la información de un trabajador"""
     def __init__(self, id, cedula, nombre, apellido, departamento, tipoNomina, id_empleado, activo):
         self.id = id
         self.cedula = cedula
@@ -17,14 +18,14 @@ class Employee:
 
     @staticmethod
     def get_all_with_filters(search=None, tipo_nomina=None, estado=None, limit=100, offset=0):
-        """Obtiene empleados con filtros de búsqueda y paginación - SCHEMA VERIFICADO"""
+        """Busca empleados en la base de datos usando filtros (nombre, cédula, cargo, etc.)"""
         conn = None
         cursor = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor(dictionary=True)
             
-            # Query ajustado para usar JOINs con catálogos (3NF)
+            # Traemos los datos del empleado conectándolos con su departamento y tipo de nómina real
             query = """
                 SELECT 
                     e.id,
@@ -44,42 +45,37 @@ class Employee:
             """
             params = []
             
+            # Filtro por texto: Si el usuario escribió algo en el buscador
             if search:
                 query += " AND (e.nombre LIKE %s OR e.apellido LIKE %s OR e.cedula LIKE %s OR cd.nombre LIKE %s)"
                 search_val = f"%{search}%"
                 params.extend([search_val, search_val, search_val, search_val])
             
+            # Filtro por nómina (Semanal o Quincenal)
             if tipo_nomina:
                 query += " AND e.tipo_nomina_id = %s"
                 params.append(tipo_nomina)
                 
+            # Filtro por estado: Solo activos o solo inactivos
             if estado is not None:
                 query += " AND e.boolValidacion = %s"
                 params.append(1 if estado == 'activo' else 0)
                 
-            # Formatear LIMIT/OFFSET directamente
+            # Agregamos el orden y la paginación (cuántos resultados mostrar por vez)
             query += f" ORDER BY e.id DESC LIMIT {int(limit)} OFFSET {int(offset)}"
             
             cursor.execute(query, tuple(params))
             empleados = cursor.fetchall()
             
-            # Procesar resultados para compatibilidad
+            # Ajustamos un poco los datos para que sean fáciles de usar en las pantallas de la web
             for emp in empleados:
-                # Alias para compatibilidad con plantillas antiguas
                 emp['departamento'] = emp['departamento_nombre']
                 emp['tipo_nomina_id'] = emp['tipoNomina']
-                
-                # Campos faltantes en DB pero esperados por código (opcional)
-                emp['fecha_ingreso'] = None
-                emp['fecha_nacimiento'] = None
-                emp['created_at'] = None
                 
             return empleados
             
         except Exception as e:
-            logger.error(f"Error in get_all_with_filters: {e}")
-            import traceback
-            traceback.print_exc()
+            logger.error(f"Error al intentar buscar empleados: {e}")
             return []
         finally:
             if cursor: cursor.close()
@@ -87,6 +83,7 @@ class Employee:
 
     @staticmethod
     def count_with_filters(search=None, tipo_nomina=None, estado=None):
+        """Cuenta cuántos empleados coinciden con los filtros (sin traer sus datos, solo el número)"""
         conn = None
         cursor = None
         try:
@@ -112,7 +109,7 @@ class Employee:
             cursor.execute(query, tuple(params))
             return cursor.fetchone()[0]
         except Exception as e:
-            logger.error(f"Error in count_with_filters: {e}")
+            logger.error(f"Error al contar empleados: {e}")
             return 0
         finally:
             if cursor: cursor.close()
@@ -120,12 +117,14 @@ class Employee:
 
     @staticmethod
     def get_by_id(employee_id):
+        """Busca toda la ficha de un empleado usando su número de registro único (ID)"""
         conn = None
         cursor = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor(dictionary=True)
-            # Query 3NF con JOINs
+            
+            # Consultamos los datos uniendo las tablas de catálogos para tener nombres legibles
             query = """
                 SELECT 
                     e.id, e.id_empleado, e.cedula, e.nombre, e.apellido, 
@@ -146,7 +145,7 @@ class Employee:
                 
             return emp
         except Exception as e:
-            logger.error(f"Error in get_by_id: {e}")
+            logger.error(f"Error al buscar empleado por ID: {e}")
             return None
         finally:
             if cursor: cursor.close()
@@ -154,31 +153,25 @@ class Employee:
 
     @staticmethod
     def create(data):
-        """Crea un nuevo empleado"""
+        """Guarda un nuevo trabajador en el sistema"""
         conn = None
         cursor = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             
-            departamento_nombre = data['departamento']
-            tipo_nomina = int(data.get('tipoNomina', 1))
-            
-            # Obtener o crear ID del departamento a partir del nombre (mantiene funcionalidad UI)
+            # Si el departamento que escribieron es nuevo, lo registramos automáticamente
             departamento_id = data.get('departamento_id')
             if not departamento_id and data.get('departamento'):
                 departamento_id = Employee.get_or_create_department(data['departamento'])
             
             tipo_nomina_id = int(data.get('tipoNomina', 1))
             
-            # Insertar en columnas normalizadas y mantener legacy por seguridad
+            # Insertamos el registro en la base de datos
             query = """
                 INSERT INTO empleados (id_empleado, cedula, nombre, apellido, departamento_id, tipo_nomina_id, boolValidacion, departamento, tipoNomina)
                 VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             """
-            # Obtenemos el nombre final del departamento para la columna legacy
-            dept_name = data.get('departamento')
-            
             cursor.execute(query, (
                 data['id_empleado'],
                 data['cedula'],
@@ -187,22 +180,20 @@ class Employee:
                 departamento_id,
                 tipo_nomina_id,
                 data.get('boolValidacion', 1),
-                dept_name,
+                data.get('departamento'),
                 tipo_nomina_id
             ))
             conn.commit()
             return cursor.lastrowid
         except Exception as e:
             error_msg = str(e).lower()
-            logger.error(f"Error creating employee: {e}")
+            logger.error(f"Error creando empleado: {e}")
             
+            # Avisamos si el error fue porque ya existe esa cédula o ese número de ficha
             if 'duplicate' in error_msg or '1062' in error_msg:
-                if 'cedula' in error_msg:
-                    return 'DUPLICATE_CEDULA'
-                elif 'id_empleado' in error_msg:
-                    return 'DUPLICATE_ID'
-                else:
-                    return 'DUPLICATE'
+                if 'cedula' in error_msg: return 'DUPLICATE_CEDULA'
+                if 'id_empleado' in error_msg: return 'DUPLICATE_ID'
+                return 'DUPLICATE'
             
             if conn: conn.rollback()
             return None
@@ -212,58 +203,46 @@ class Employee:
 
     @staticmethod
     def update(employee_id, data):
+        """Actualiza la información de un empleado existente"""
         conn = None
         cursor = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             
-            departamento_nombre = data['departamento']
-            tipo_nomina = int(data['tipoNomina'])
-
-            # Obtener o crear ID del departamento (mantiene funcionalidad UI)
+            # Verificamos el departamento (crearlo si es nuevo)
             departamento_id = data.get('departamento_id')
             if not departamento_id and data.get('departamento'):
                 departamento_id = Employee.get_or_create_department(data['departamento'])
             
             tipo_nomina_id = int(data['tipoNomina'])
+            
+            # Para la auditoría, guardamos la IP de quien está haciendo el cambio
             from utils.helpers import get_client_ip
-            ip = get_client_ip()
-            cursor.execute("SET @client_ip = %s", (ip,))
+            cursor.execute("SET @client_ip = %s", (get_client_ip(),))
 
+            # Ejecutamos la actualización
             query = """
                 UPDATE empleados 
                 SET id_empleado = %s, cedula = %s, nombre = %s, apellido = %s, 
                     departamento_id = %s, tipo_nomina_id = %s, 
-                    boolValidacion = %s,
-                    departamento = %s,
-                    tipoNomina = %s
+                    boolValidacion = %s, departamento = %s, tipoNomina = %s
                 WHERE id = %s
             """
             cursor.execute(query, (
-                data['id_empleado'],
-                data['cedula'],
-                data['nombre'],
-                data['apellido'],
-                departamento_id,
-                tipo_nomina_id,
-                data['boolValidacion'],
-                dept_name,
-                tipo_nomina_id,
-                employee_id
+                data['id_empleado'], data['cedula'], data['nombre'], data['apellido'],
+                departamento_id, tipo_nomina_id, data['boolValidacion'],
+                data.get('departamento'), tipo_nomina_id, employee_id
             ))
             conn.commit()
-            return True # Success if no exception occurred
+            return True 
         except Exception as e:
             error_msg = str(e).lower()
-            logger.error(f"Error updating employee {employee_id}: {e}")
+            logger.error(f"Error actualizando empleado: {e}")
             if conn: conn.rollback()
-            
             if 'duplicate' in error_msg or '1062' in error_msg:
                 if 'cedula' in error_msg: return 'DUPLICATE_CEDULA'
                 if 'id_empleado' in error_msg: return 'DUPLICATE_ID'
-                return 'DUPLICATE'
-                
             return False
         finally:
             if cursor: cursor.close()
@@ -271,7 +250,7 @@ class Employee:
 
     @staticmethod
     def get_or_create_department(name):
-        """Busca el ID de un departamento por nombre o lo crea si no existe"""
+        """Busca el número de ID de un departamento por su nombre; si no existe, lo crea de una vez"""
         if not name: return None
         name = name.strip()
         conn = None
@@ -280,19 +259,19 @@ class Employee:
             conn = get_db_connection()
             cursor = conn.cursor()
             
-            # Buscar ID
+            # Buscamos si ya existe alguien con ese nombre de departamento
             cursor.execute("SELECT id FROM cat_departamentos WHERE nombre = %s", (name,))
             res = cursor.fetchone()
             if res:
                 return res[0]
             
-            # Si no existe, crear
+            # Si es nuevo, lo guardamos en el catálogo de departamentos
             cursor.execute("INSERT INTO cat_departamentos (nombre) VALUES (%s)", (name,))
             new_id = cursor.lastrowid
             conn.commit()
             return new_id
         except Exception as e:
-            logger.error(f"Error in get_or_create_department: {e}")
+            logger.error(f"Error al manejar departamentos: {e}")
             return None
         finally:
             if cursor: cursor.close()
@@ -300,16 +279,18 @@ class Employee:
 
     @staticmethod
     def toggle_status(employee_id):
+        """Cambia el estado de un empleado (de activo a inactivo o viceversa)"""
         conn = None
         cursor = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
+            # Usamos una operación lógica NOT para invertir el valor actual
             cursor.execute("UPDATE empleados SET boolValidacion = NOT boolValidacion WHERE id = %s", (employee_id,))
             conn.commit()
             return cursor.rowcount > 0
         except Exception as e:
-            logger.error(f"Error toggling employee status: {e}")
+            logger.error(f"Error al cambiar estado del empleado: {e}")
             if conn: conn.rollback()
             return False
         finally:
@@ -318,7 +299,7 @@ class Employee:
 
     @staticmethod
     def get_unique_departments():
-        """Obtiene todos los departamentos del catálogo (ID y Nombre)"""
+        """Obtiene una lista limpia de todos los departamentos registrados en el sistema"""
         conn = None
         cursor = None
         try:
@@ -327,7 +308,7 @@ class Employee:
             cursor.execute("SELECT id, nombre FROM cat_departamentos WHERE activo = TRUE ORDER BY nombre")
             return cursor.fetchall()
         except Exception as e:
-            logger.error(f"Error in get_unique_departments: {e}")
+            logger.error(f"Error al listar departamentos: {e}")
             return []
         finally:
             if cursor: cursor.close()
@@ -335,30 +316,28 @@ class Employee:
 
     @staticmethod
     def get_payroll_summary(tipo_nomina):
+        """Saca cuentas rápidas sobre la nómina consultada (totales, activos, departamentos)"""
         conn = None
         cursor = None
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
             
-            # 1. Total Count
+            # Contamos el total general de esta nómina
             cursor.execute("SELECT COUNT(*) FROM empleados WHERE tipo_nomina_id = %s", (tipo_nomina,))
             total = cursor.fetchone()[0]
             
-            # 2. Active Count
+            # Contamos cuántos de ellos pueden recibir beneficios (activos)
             cursor.execute("SELECT COUNT(*) FROM empleados WHERE tipo_nomina_id = %s AND boolValidacion = 1", (tipo_nomina,))
             activos = cursor.fetchone()[0]
             
-            # 3. Inactive Count (Calculated)
-            inactivos = total - activos
-            
-            # 4. Total Departments Count
+            # Contamos en cuántos departamentos distintos están repartidos
             cursor.execute("SELECT COUNT(DISTINCT departamento_id) FROM empleados WHERE tipo_nomina_id = %s AND departamento_id IS NOT NULL", (tipo_nomina,))
             total_depts = cursor.fetchone()[0]
             
-            return (int(total), int(activos), int(inactivos), int(total_depts))
+            return (int(total), int(activos), int(total - activos), int(total_depts))
         except Exception as e:
-            logger.error(f"Error in get_payroll_summary: {e}")
+            logger.error(f"Error al calcular resumen de nómina: {e}")
             return (0, 0, 0, 0)
         finally:
             if cursor: cursor.close()
@@ -366,16 +345,14 @@ class Employee:
 
     @staticmethod
     def get_department_summary(tipo_nomina):
-        """Obtiene resumen de empleados por departamento para una nómina específica
-        Retorna: Lista de tuplas (departamento, activos, inactivos)
-        """
+        """Genera un reporte de cuántos activos e inactivos hay por cada departamento"""
         conn = None
         cursor = None
         try:
             conn = get_db_connection()
-            cursor = conn.cursor(dictionary=False)
+            cursor = conn.cursor()
             
-            # Query 3NF con JOIN para obtener nombres reales
+            # Hacemos una consulta agrupando por departamento y sumando los estados
             cursor.execute("""
                 SELECT 
                     cd.nombre,
@@ -389,11 +366,10 @@ class Employee:
             """, (tipo_nomina,))
             
             rows = cursor.fetchall()
-            # Asegurar que los conteos sean int y no Decimal para JSON serialization
             return [(row[0], int(row[1]), int(row[2])) for row in rows]
             
         except Exception as e:
-            logger.error(f"Error in get_department_summary: {e}")
+            logger.error(f"Error al generar resumen por departamento: {e}")
             return []
         finally:
             if cursor: cursor.close()
@@ -401,5 +377,5 @@ class Employee:
             
     @staticmethod
     def get_all(tipo_nomina, estado=None, limit=1000):
-        """Helper para compatibilidad con provision (devuelve lista de diccionarios)"""
+        """Función rápida para traer a todo el personal de una nómina (se usa mucho en provisiones)"""
         return Employee.get_all_with_filters(tipo_nomina=tipo_nomina, estado=estado, limit=limit)

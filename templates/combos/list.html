@@ -2,6 +2,58 @@
 
 {% block title %}Gestión de Combos{% endblock %}
 
+{% block extra_css %}
+<style>
+    .search-panel-combos {
+        background: linear-gradient(135deg, rgba(255,255,255,0.97), rgba(234,242,251,0.97));
+        border-radius: 10px;
+        border-left: 4px solid #2c7be5;
+        box-shadow: 0 2px 10px rgba(44,123,229,0.08);
+    }
+
+    .search-panel-combos .card-header {
+        background: transparent;
+        border-bottom: 1px solid rgba(44,123,229,0.12);
+        padding: 0.6rem 1rem;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #1a2d45;
+    }
+
+    small.filter-label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #4a6080;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        display: block;
+        margin-bottom: 4px;
+    }
+
+    .search-panel-combos .form-control,
+    .search-panel-combos .form-select {
+        text-align: left !important;
+        margin-bottom: 0 !important;
+        height: 36px;
+        font-size: 0.82rem;
+        border: 1.5px solid #c8d9f0;
+        border-radius: 6px;
+        background: rgba(255,255,255,0.85);
+    }
+
+    .search-panel-combos .form-control:focus,
+    .search-panel-combos .form-select:focus {
+        border-color: #2c7be5;
+        box-shadow: 0 0 0 0.15rem rgba(44,123,229,0.18);
+    }
+
+    .search-panel-combos .btn {
+        height: 36px;
+        font-size: 0.82rem;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="main-container">
     <div class="welcome-header d-flex justify-content-between align-items-center mb-4">
@@ -16,10 +68,48 @@
         </div>
     </div>
 
+    <!-- Panel de Búsqueda -->
+    <div class="card search-panel-combos shadow-sm mb-3">
+        <div class="card-header d-flex align-items-center gap-2">
+            <i class="fas fa-sliders-h text-primary"></i>
+            <span>Buscar y Filtrar Combos</span>
+        </div>
+        <div class="card-body py-3">
+            <div class="row g-3 align-items-end">
+
+                <div class="col-lg-6 col-md-8">
+                    <small class="filter-label"><i class="fas fa-search me-1"></i>Buscar por nombre o descripción</small>
+                    <input type="text" id="searchCombos" class="form-control"
+                        placeholder="Escribe para filtrar...">
+                </div>
+
+                <div class="col-lg-3 col-md-4">
+                    <small class="filter-label"><i class="fas fa-toggle-on me-1"></i>Estado</small>
+                    <select id="filterEstado" class="form-select">
+                        <option value="">Todos los Estados</option>
+                        <option value="activo">Activos</option>
+                        <option value="inactivo">Inactivos</option>
+                    </select>
+                </div>
+
+                <div class="col-lg-3 col-md-12">
+                    <small class="filter-label">&nbsp;</small>
+                    <button type="button" onclick="clearFilters()"
+                        class="btn btn-outline-secondary w-100 d-flex align-items-center justify-content-center gap-1">
+                        <i class="fas fa-sync-alt"></i>
+                        <span style="font-size:0.75rem">Limpiar</span>
+                    </button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
     <div class="card bg-transparent border-0 shadow-sm">
         <div class="card-body bg-white bg-opacity-25 p-0">
             <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0">
+                <table class="table table-hover align-middle mb-0" id="combosTable">
+
                     <thead class="table-dark">
                         <tr>
                             <th style="width: 50px;">ID</th>
@@ -75,3 +165,36 @@
     </div>
 </div>
 {% endblock %}
+
+{% block scripts %}
+<script>
+    const searchInput  = document.getElementById('searchCombos');
+    const estadoSelect = document.getElementById('filterEstado');
+    const tableRows    = document.querySelectorAll('#combosTable tbody tr');
+
+    function applyFilters() {
+        const text   = searchInput.value.toLowerCase().trim();
+        const estado = estadoSelect.value.toLowerCase();
+
+        tableRows.forEach(row => {
+            const nombre = row.cells[1] ? row.cells[1].textContent.toLowerCase() : '';
+            const desc   = row.cells[2] ? row.cells[2].textContent.toLowerCase() : '';
+            const badge  = row.cells[3] ? row.cells[3].textContent.toLowerCase().trim() : '';
+
+            const matchText   = !text   || nombre.includes(text) || desc.includes(text);
+            const matchEstado = !estado || badge.includes(estado);
+
+            row.style.display = (matchText && matchEstado) ? '' : 'none';
+        });
+    }
+
+    function clearFilters() {
+        searchInput.value  = '';
+        estadoSelect.value = '';
+        applyFilters();
+    }
+
+    searchInput.addEventListener('input', applyFilters);
+    estadoSelect.addEventListener('change', applyFilters);
+</script>
+{% endblock %}

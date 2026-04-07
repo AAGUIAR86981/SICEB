@@ -1,19 +1,20 @@
-# controllers/auth.py - VERSIÓN CON ELIMINAR USUARIOS
+# controllers/auth.py - Módulo encargado de la seguridad y el acceso al sistema
 from flask import Blueprint, request, render_template, session, flash, redirect, url_for, jsonify
 from passlib.hash import pbkdf2_sha256
 from config.database import get_db_connection
-from utils.helpers import log_user_activity
-from utils.decorators import login_required, admin_required, permission_required  # Importar decoradores
+from utils.helpers import log_user_activity, send_reset_email
+from utils.decorators import login_required, admin_required, permission_required 
 
+# Creamos el módulo de autenticación para agrupar todo lo relacionado con login y usuarios
 auth_bp = Blueprint('auth', __name__)
 
-
+# Importamos el modelo de Usuario para interactuar con la base de datos
 from models.user import User
 
 @auth_bp.route('/')
 def index():
-    """Página principal de login"""
-    # CORRECCIÓN: Cambiar list comprehension por loop
+    """Esta es la puerta de entrada: Muestra la pantalla de inicio de sesión"""
+    # Por seguridad, limpiamos cualquier sesión que haya quedado abierta antes de mostrar el login
     for key in list(session.keys()):
         if not key.startswith('_'):
             session.pop(key)
@@ -22,8 +23,9 @@ def index():
 
 @auth_bp.route('/auth', methods=['POST'])
 def access():
-    """Autenticación de usuario - VERSIÓN REFACTORIZADA CON MODELO"""
+    """Proceso de validación: Revisa si el nombre y la clave son correctos"""
     if request.method == 'POST':
+        # Leemos lo que el usuario escribió en los campos de texto
         username = request.form['username']
         password = request.form['password']
 
@@ -33,12 +35,12 @@ def access():
             
             if user:
 
-                # Capturamos el ultimo acceso de sesion actual de la BD
-                fecha_anterior = user.original_row[8] if len(user.original_row) > 8 else None
-                # Comprobar si requiere cambio de password (legacy logic)
-                # user.original_row[3] es password hash
+                # Capturamos el último acceso guardado antes de actualizarlo con la entrada actual
+                fecha_anterior = user.last_login
+                
+                # Verificación de seguridad: Si la clave es la genérica, pedimos que la cambie
                 if user.password == 'newuser':
-                     flash('Please update your password by clicking "Forgot Password"')
+                     flash('Por favor, actualiza tu contraseña haciendo clic en "¿Olvidaste tu contraseña?"')
                      return redirect(url_for('auth.index'))
 
                 # Verificar password
@@ -46,10 +48,12 @@ def access():
                     log_user_activity(user.id, user.username, 'Inicio de sesión', 'El usuario inició sesión correctamente')
 
                     # SESIÓN
+                    from datetime import datetime
                     session['logged'] = True
                     session['id'] = user.id
                     session['user'] = user.username
                     session['userAlias'] = user.username
+                    session['fecha'] = datetime.now().strftime('%d/%m/%Y')
                     session['last_access'] = fecha_anterior  # <--- GUARDAR EN SESIÓN AQUÍ
                     session['isAdmin'] = 1 if user.is_admin else 0
                     
@@ -131,7 +135,7 @@ def access():
 
 @auth_bp.route('/olvido', methods=['GET', 'POST'])
 def olvido():
-    """Recuperación de contraseña"""
+    """Recuperación de contraseña con envío de token"""
     if request.method == 'POST':
         username = request.form['username']
         email = request.form['email']
@@ -140,9 +144,16 @@ def olvido():
             user_id = User.get_id_by_username_email(username, email)
 
             if user_id:
-                session['resetid'] = user_id
-                log_user_activity(user_id, username, 'Solicitud de restablecimiento', 'Usuario solicitó restablecer contraseña')
-                return redirect(url_for('auth.nuevaclave'))
+                # 1. Generar Token
+                token = User.create_reset_token(user_id)
+                # 2. Enviar Correo
+                if send_reset_email(email, token):
+                    log_user_activity(user_id, username, 'Solicitud de restablecimiento', 'Token de recuperación enviado por correo')
+                    flash('Se ha enviado un correo con instrucciones para restablecer tu contraseña. Revisa tu bandeja de entrada.')
+                else:
+                    flash('Error al generar el envío. Contacte a soporte.')
+                
+                return redirect(url_for('auth.index'))
             else:
                 flash('Usuario o email incorrectos')
                 return redirect(url_for('auth.olvido'))
@@ -151,6 +162,42 @@ def olvido():
             return redirect(url_for('auth.olvido'))
             
     return render_template('olvido.html')
+
+
+@auth_bp.route('/restablecer-password/<token>', methods=['GET', 'POST'])
+def reset_password_token(token):
+    """Restablecimiento de contraseña mediante token seguro"""
+    try:
+        # Validar Token
+        user_id = User.validate_reset_token(token)
+        
+        if not user_id:
+            flash('El enlace es inválido, ya fue usado o ha expirado.')
+            return redirect(url_for('auth.olvido'))
+            
+        if request.method == 'POST':
+            newPassword = request.form['password']
+            confirmPassword = request.form.get('confirm_password')
+            
+            if confirmPassword and newPassword != confirmPassword:
+                 flash('Las contraseñas no coinciden')
+                 return render_template('nuevaclave.html', token=token)
+
+            # Actualizar Password
+            User.update_password_by_reset_id(user_id, newPassword)
+            # Marcar token como usado
+            User.mark_token_as_used(token)
+            
+            log_user_activity(user_id, None, 'Restablecimiento de contraseña', 'Contraseña actualizada mediante token')
+            
+            flash('Tu contraseña ha sido actualizada exitosamente.')
+            return redirect(url_for('auth.index'))
+            
+        return render_template('nuevaclave.html', token=token)
+        
+    except Exception as e:
+        flash('Error: '+str(e))
+        return redirect(url_for('auth.index'))
 
 
 @auth_bp.route('/nuevaclave', methods=['GET', 'POST'])

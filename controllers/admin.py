@@ -1,23 +1,26 @@
 from flask import Blueprint, request, render_template, session, flash, redirect, url_for
 from config.database import get_db_connection
-from utils.decorators import admin_required
+from utils.decorators import admin_required, login_required
 from utils.helpers import log_user_activity
-# En controllers/main.py y controllers/admin.py:
-from utils.decorators import login_required, admin_required
+
+# Módulo de Administración: El centro de mando para supervisar todo lo que pasa en el sistema
 admin_bp = Blueprint('admin', __name__)
 
 
 @admin_bp.route('/admin', methods=['GET', 'POST'])
-@admin_required
+@login_required # Solo para personas que entraron al sistema
+@admin_required # Solo para administradores jefes
 def admin():
-    """Panel de administración """
+    """Muestra el panel de control principal con estadísticas y registro de usuarios"""
     conn = None
     cursor = None
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
 
+        # Si el administrador envió el formulario para crear un nuevo usuario
         if request.method == 'POST':
+            # Recogemos los datos de la nueva persona
             username = request.form['username']
             email = request.form['email']
             name = request.form['name']

@@ -2,6 +2,56 @@
 
 {% block title %}Gestión de Productos{% endblock %}
 
+{% block extra_css %}
+<style>
+    .search-panel-products {
+        background: linear-gradient(135deg, rgba(255,255,255,0.97), rgba(234,242,251,0.97));
+        border-radius: 10px;
+        border-left: 4px solid #2c7be5;
+        box-shadow: 0 2px 10px rgba(44,123,229,0.08);
+    }
+    .search-panel-products .card-header {
+        background: transparent;
+        border-bottom: 1px solid rgba(44,123,229,0.12);
+        padding: 0.6rem 1rem;
+        font-size: 0.82rem;
+        font-weight: 600;
+        color: #1a2d45;
+    }
+    small.filter-label {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #4a6080;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+        display: block;
+        margin-bottom: 4px;
+    }
+    .search-panel-products .form-control,
+    .search-panel-products .form-select {
+        text-align: left !important;
+        margin-bottom: 0 !important;
+        height: 36px;
+        font-size: 0.82rem;
+        border: 1.5px solid #c8d9f0;
+        border-radius: 6px;
+        background: rgba(255,255,255,0.85);
+    }
+    .search-panel-products .form-control:focus,
+    .search-panel-products .form-select:focus {
+        border-color: #2c7be5;
+        box-shadow: 0 0 0 0.15rem rgba(44,123,229,0.18);
+    }
+    .search-panel-products .btn { height: 36px; font-size: 0.82rem; }
+
+    /* Stat cards con azules diferenciados */
+    .stat-card-activos  { background: linear-gradient(135deg, #1b7a4a, #27ae60) !important; color:white; }
+    .stat-card-inactivos { background: linear-gradient(135deg, #b7950b, #d4ac0d) !important; color:white; }
+    .stat-card-total    { background: linear-gradient(135deg, #1e3a5f, #2c7be5) !important; color:white; }
+    .stat-card-activos h2, .stat-card-inactivos h2, .stat-card-total h2 { font-size: 2rem; }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="container-fluid mt-4">
     <div class="row">
@@ -22,56 +72,62 @@
             </div>
 
             <!-- Estadísticas -->
-            <div class="row mb-4">
+            <div class="row mb-3">
                 <div class="col-md-4">
-                    <div class="card bg-success text-white">
-                        <div class="card-body">
-                            <h5 class="card-title"><i class="fas fa-check-circle"></i> Productos Activos</h5>
-                            <h2>{{ total_activos }}</h2>
+                    <div class="card stat-card-activos">
+                        <div class="card-body py-2 px-3">
+                            <h5 class="card-title mb-0" style="font-size:0.85rem"><i class="fas fa-check-circle"></i> Productos Activos</h5>
+                            <h2 class="my-1">{{ total_activos }}</h2>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card bg-warning text-white">
-                        <div class="card-body">
-                            <h5 class="card-title"><i class="fas fa-times-circle"></i> Productos Inactivos</h5>
-                            <h2>{{ total_inactivos }}</h2>
+                    <div class="card stat-card-inactivos">
+                        <div class="card-body py-2 px-3">
+                            <h5 class="card-title mb-0" style="font-size:0.85rem"><i class="fas fa-times-circle"></i> Productos Inactivos</h5>
+                            <h2 class="my-1">{{ total_inactivos }}</h2>
                         </div>
                     </div>
                 </div>
                 <div class="col-md-4">
-                    <div class="card bg-info text-white">
-                        <div class="card-body">
-                            <h5 class="card-title"><i class="fas fa-list"></i> Mostrando</h5>
-                            <h2>{{ total_productos }}</h2>
+                    <div class="card stat-card-total">
+                        <div class="card-body py-2 px-3">
+                            <h5 class="card-title mb-0" style="font-size:0.85rem"><i class="fas fa-list"></i> Mostrando</h5>
+                            <h2 class="my-1">{{ total_productos }}</h2>
                         </div>
                     </div>
                 </div>
             </div>
 
             <!-- Filtros y Búsqueda -->
-            <div class="card mb-4">
-                <div class="card-body">
-                    <form method="GET" action="{{ url_for('products.list_products') }}" class="row g-3">
-                        <div class="col-md-6">
-                            <label for="search" class="form-label">Buscar</label>
-                            <input type="text" class="form-control" id="search" name="search"
-                                placeholder="Buscar por nombre o categoría..." value="{{ search_query }}">
-                        </div>
-                        <div class="col-md-4">
-                            <label for="status" class="form-label">Estado</label>
-                            <select class="form-select" id="status" name="status">
-                                <option value="active" {% if filter_status=='active' %}selected{% endif %}>Solo Activos
-                                </option>
-                                <option value="inactive" {% if filter_status=='inactive' %}selected{% endif %}>Solo
-                                    Inactivos</option>
-                                <option value="all" {% if filter_status=='all' %}selected{% endif %}>Todos</option>
-                            </select>
-                        </div>
-                        <div class="col-md-2 d-flex align-items-end">
-                            <button type="submit" class="btn btn-primary w-100">
-                                <i class="fas fa-search"></i> Buscar
-                            </button>
+            <div class="card search-panel-products mb-3">
+                <div class="card-header d-flex align-items-center gap-2">
+                    <i class="fas fa-sliders-h text-primary"></i>
+                    <span>Buscar y Filtrar Productos</span>
+                </div>
+                <div class="card-body py-3">
+                    <form method="GET" action="{{ url_for('products.list_products') }}">
+                        <div class="row g-3 align-items-end">
+                            <div class="col-lg-6 col-md-6">
+                                <small class="filter-label"><i class="fas fa-search me-1"></i>Buscar</small>
+                                <input type="text" class="form-control" id="search" name="search"
+                                    placeholder="Buscar por nombre o categoría..." value="{{ search_query }}">
+                            </div>
+                            <div class="col-lg-4 col-md-4">
+                                <small class="filter-label"><i class="fas fa-toggle-on me-1"></i>Estado</small>
+                                <select class="form-select" id="status" name="status">
+                                    <option value="active"   {% if filter_status=='active'   %}selected{% endif %}>Solo Activos</option>
+                                    <option value="inactive" {% if filter_status=='inactive' %}selected{% endif %}>Solo Inactivos</option>
+                                    <option value="all"      {% if filter_status=='all'      %}selected{% endif %}>Todos</option>
+                                </select>
+                            </div>
+                            <div class="col-lg-2 col-md-2">
+                                <small class="filter-label">&nbsp;</small>
+                                <button type="submit" class="btn btn-primary w-100 d-flex align-items-center justify-content-center gap-1">
+                                    <i class="fas fa-search"></i>
+                                    <span style="font-size:0.75rem">Buscar</span>
+                                </button>
+                            </div>
                         </div>
                     </form>
                 </div>

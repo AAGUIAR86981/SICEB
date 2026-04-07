@@ -5,19 +5,25 @@ from utils.helpers import log_user_activity, exportar_excel_generic, exportar_cs
 import math
 from datetime import datetime
 
+# Módulo de Empleados: Aquí gestionamos toda la base de datos del personal (altas, bajas y cambios)
 employees_bp = Blueprint('employees', __name__, url_prefix='/empleados')
 
 @employees_bp.route('/')
-@login_required
-@permission_required('manage_employees')
+@login_required # Solo usuarios identificados
+@permission_required('manage_employees') # Solo quienes tengan permiso para ver el personal
 def list_employees():
+    """Muestra la tabla principal con todos los empleados, permitiendo buscar y filtrar"""
+    # Leemos los filtros que el usuario aplicó en la pantalla
     search = request.args.get('search', '')
     tipo_nomina = request.args.get('tipo_nomina', '')
     estado = request.args.get('estado', '')
+    
+    # Configuración de la paginación para no saturar la pantalla (15 por página)
     page = int(request.args.get('page', 1))
     per_page = 15
     offset = (page - 1) * per_page
 
+    # Traemos la lista de empleados que coinciden con lo que el usuario está buscando
     employees = Employee.get_all_with_filters(
         search=search, 
         tipo_nomina=tipo_nomina, 
