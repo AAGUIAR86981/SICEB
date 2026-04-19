@@ -20,6 +20,7 @@ from controllers.roles import roles_bp
 from controllers.combos import combos_bp
 from controllers.employees import employees_bp
 from controllers.products import products_bp
+from controllers.reports import reports_bp
 
 # Paso 3: Creamos el motor de la página web (Flask) y le decimos dónde están las pantallas (templates)
 app = Flask(__name__, template_folder='templates')
@@ -40,9 +41,12 @@ app.register_blueprint(combos_bp)      # Gestión de Combos de Productos
 app.register_blueprint(employees_bp)   # Base de datos de Trabajadores
 app.register_blueprint(products_bp)    # Catálogo de Productos
 
+app.register_blueprint(reports_bp)     # Generación de reportes en excel y pdf
+
 # Paso 5: Agregamos herramientas visuales para las pantallas (como formatear fechas correctamente)
 app.jinja_env.filters['dateformat'] = dateformat
 app.jinja_env.filters['from_json'] = from_json
+
 
 # Ruta para el icono de la pestaña del navegador (Favicon)
 @app.route('/favicon.ico')

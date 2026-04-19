@@ -10,7 +10,7 @@
         border-radius: 12px;
         box-shadow: 0 8px 32px rgba(31, 38, 135, 0.1);
     }
-    
+
     .welcome-header {
         background: linear-gradient(135deg, var(--blue-nav), var(--secondary-color));
         padding: 2rem;
@@ -23,7 +23,7 @@
         transition: transform 0.3s ease;
         border: none;
     }
-    
+
     .stat-card:hover {
         transform: translateY(-5px);
     }
@@ -41,9 +41,18 @@
     }
 
     @media print {
-        .no-print { display: none !important; }
-        .card { border: 1px solid #ddd !important; box-shadow: none !important; }
-        body { background: white !important; }
+        .no-print {
+            display: none !important;
+        }
+
+        .card {
+            border: 1px solid #ddd !important;
+            box-shadow: none !important;
+        }
+
+        body {
+            background: white !important;
+        }
     }
 </style>
 {% endblock %}
@@ -51,7 +60,8 @@
 {% block content %}
 <div class="container-fluid mt-4">
     <!-- Encabezado Premium -->
-    <div class="welcome-header shadow-sm d-flex justify-content-between align-items-center no-print" style="padding: 1.5rem 2rem;">
+    <div class="welcome-header shadow-sm d-flex justify-content-between align-items-center no-print"
+        style="padding: 1.5rem 2rem;">
         <div>
             <h1 class="text-white mb-1"><i class="fas fa-clipboard-check me-2"></i>Resultados de Provisión</h1>
             <p class="mb-0 opacity-75">
@@ -101,7 +111,8 @@
             <div class="card stat-card bg-primary text-white shadow-sm h-100">
                 <div class="card-body text-center p-4">
                     <h6 class="text-uppercase small opacity-75 fw-bold">Total General</h6>
-                    <h2 class="display-6 fw-bold mb-0">{{ (session['asignados'] | length) + (session['invalidados'] | length) }}</h2>
+                    <h2 class="display-6 fw-bold mb-0">{{ (session['asignados'] | length) + (session['invalidados'] |
+                        length) }}</h2>
                     <div class="mt-2 small"><i class="fas fa-users me-1"></i>Personal evaluado</div>
                 </div>
             </div>
@@ -118,7 +129,7 @@
             <div class="d-flex flex-wrap gap-2 justify-content-center">
                 {% for producto, cantidad in session['combo'] %}
                 <div class="badge bg-white text-primary border border-primary p-2 px-3 rounded-pill shadow-sm">
-                    <span class="fw-bold">{{ producto }}:</span> 
+                    <span class="fw-bold">{{ producto }}:</span>
                     <span class="badge bg-primary ms-1">{{ cantidad }}</span>
                 </div>
                 {% endfor %}
@@ -132,13 +143,13 @@
         <div class="card-header bg-success text-white border-0 py-3">
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-center gap-2">
                 <h5 class="mb-0 text-white fw-bold"><i class="fas fa-user-check me-2"></i>Personal Asignado</h5>
-                <div class="search-container no-print d-flex align-items-center bg-white bg-opacity-25" 
-                     style="max-width: 320px; min-width: 250px; height: 38px; border-radius: 50px; padding: 0 15px; border: 1px solid rgba(255,255,255,0.2);">
+                <div class="search-container no-print d-flex align-items-center bg-white bg-opacity-25"
+                    style="max-width: 320px; min-width: 250px; height: 38px; border-radius: 50px; padding: 0 15px; border: 1px solid rgba(255,255,255,0.2);">
                     <i class="fas fa-search me-2 opacity-75"></i>
-                    <input type="text" id="searchAsignados" 
-                           class="border-0 bg-transparent text-white placeholder-white shadow-none w-100" 
-                           style="height: 100%; outline: none; font-size: 0.9rem;" 
-                           placeholder="Buscar por nombre o cédula...">
+                    <input type="text" id="searchAsignados"
+                        class="border-0 bg-transparent text-white placeholder-white shadow-none w-100"
+                        style="height: 100%; outline: none; font-size: 0.9rem;"
+                        placeholder="Buscar por nombre o cédula...">
                 </div>
             </div>
         </div>
@@ -180,14 +191,15 @@
         <div class="card-footer bg-light border-0 py-3 no-print">
             <div class="d-flex justify-content-between align-items-center">
                 <div class="btn-group">
-                    <a href="{{ url_for('provision.exportar_empleados', tipo_empleado='asignados', formato='xlsx') }}" 
-                       class="btn btn-outline-success rounded-pill-start px-4">
+                    <a href="{{ url_for('provision.exportar_empleados', tipo_empleado='asignados', formato='xlsx') }}"
+                        class="btn btn-outline-success rounded-pill-start px-4">
                         <i class="fas fa-file-excel me-2"></i>Excel
                     </a>
                     <button type="button" class="btn btn-outline-danger px-4" onclick="window.print()">
                         <i class="fas fa-print me-2"></i>Imprimir
                     </button>
-                    <button type="button" class="btn btn-outline-dark rounded-pill-end px-4" onclick="exportToPDF('dvContainer1', 'empleados_asignados')">
+                    <button type="button" class="btn btn-outline-dark rounded-pill-end px-4"
+                        onclick="exportToPDF('dvContainer1', 'empleados_asignados')">
                         <i class="fas fa-file-pdf me-2"></i>PDF
                     </button>
                 </div>
@@ -201,7 +213,8 @@
         <div class="card-header bg-warning text-dark border-0 py-3">
             <div class="d-flex justify-content-between align-items-center">
                 <h5 class="mb-0 fw-bold"><i class="fas fa-user-times me-2"></i>Personal que NO Cumple Requisitos</h5>
-                <span class="badge bg-dark rounded-pill px-3 py-2">{{ session['invalidados'] | length }} empleados</span>
+                <span class="badge bg-dark rounded-pill px-3 py-2">{{ session['invalidados'] | length }}
+                    empleados</span>
             </div>
         </div>
         <div class="card-body p-0">
@@ -241,7 +254,8 @@
         {% if session['invalidados'] | length > 0 %}
         <div class="card-footer bg-light border-0 py-3 no-print">
             <div class="d-flex justify-content-end gap-2">
-                <a href="{{ url_for('provision.exportar_empleados', tipo_empleado='invalidados', formato='xlsx') }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <a href="{{ url_for('provision.exportar_empleados', tipo_empleado='invalidados', formato='xlsx') }}"
+                    class="btn btn-outline-secondary btn-sm rounded-pill px-3">
                     <i class="fas fa-file-excel me-1"></i>Exportar Invalidados
                 </a>
             </div>
@@ -252,7 +266,8 @@
     <!-- Botones de Acción Final -->
     <div class="row mt-5 mb-5 no-print">
         <div class="col-12 text-center">
-            <a href="{{ url_for('provision.make_provision') }}" class="btn btn-primary btn-lg rounded-pill px-5 shadow-lg me-3">
+            <a href="{{ url_for('provision.make_provision') }}"
+                class="btn btn-primary btn-lg rounded-pill px-5 shadow-lg me-3">
                 <i class="fas fa-sync-alt me-2"></i>Nueva Provisión
             </a>
             <a href="/main" class="btn btn-outline-dark btn-lg rounded-pill px-5 shadow-sm">
@@ -279,7 +294,7 @@
     function exportToPDF(containerId, filename) {
         const { jsPDF } = window.jspdf;
         const element = document.getElementById(containerId);
-        
+
         // Mostrar feedback
         const btn = event.currentTarget;
         const originalHtml = btn.innerHTML;
@@ -291,15 +306,15 @@
             const pdf = new jsPDF('p', 'mm', 'a4');
             const imgWidth = 190;
             const imgHeight = canvas.height * imgWidth / canvas.width;
-            
+
             pdf.setFontSize(18);
-            pdf.text('Reporte de Provisión - ' + (filename === 'empleados_asignados' ? 'ASIGNADOS' : 'INVALIDADOS'), 105, 15, {align: 'center'});
+            pdf.text('Reporte de Provisión - ' + (filename === 'empleados_asignados' ? 'ASIGNADOS' : 'INVALIDADOS'), 105, 15, { align: 'center' });
             pdf.setFontSize(10);
-            pdf.text('Generado el: ' + new Date().toLocaleString(), 105, 22, {align: 'center'});
-            
+            pdf.text('Generado el: ' + new Date().toLocaleString(), 105, 22, { align: 'center' });
+
             pdf.addImage(imgData, 'PNG', 10, 30, imgWidth, imgHeight);
             pdf.save(filename + '.pdf');
-            
+
             btn.innerHTML = originalHtml;
             btn.disabled = false;
         }).catch(err => {
@@ -311,8 +326,18 @@
     }
 </script>
 <style>
-    .placeholder-white::placeholder { color: rgba(255,255,255,0.7); }
-    .rounded-pill-start { border-top-left-radius: 50px !important; border-bottom-left-radius: 50px !important; }
-    .rounded-pill-end { border-top-right-radius: 50px !important; border-bottom-right-radius: 50px !important; }
+    .placeholder-white::placeholder {
+        color: rgba(255, 255, 255, 0.7);
+    }
+
+    .rounded-pill-start {
+        border-top-left-radius: 50px !important;
+        border-bottom-left-radius: 50px !important;
+    }
+
+    .rounded-pill-end {
+        border-top-right-radius: 50px !important;
+        border-bottom-right-radius: 50px !important;
+    }
 </style>
 {% endblock %}

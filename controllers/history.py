@@ -6,6 +6,8 @@ import pandas as pd
 from io import BytesIO
 from datetime import datetime
 from openpyxl.utils import get_column_letter
+from services.historico_excel import generar_reporte_historico_excel
+
 
 # Módulo de Historial: Aquí se guardan y consultan todos los registros de entregas pasadas
 history_bp = Blueprint('history', __name__)
@@ -14,6 +16,10 @@ history_bp = Blueprint('history', __name__)
 @history_bp.route('/historico')
 @login_required # Solo usuarios que iniciaron sesión
 def history():
+    print("=" * 60)
+    print("services/historico_excel.py")
+    print("=" * 60)
+
     """Muestra la bitácora de todas las entregas realizadas con resúmenes visuales (gráficos)"""
     conn = None
     cursor = None
@@ -86,146 +92,36 @@ def history():
         if conn:
             conn.close()
 
-@history_bp.route('/descargar_historico_excel')
+
+@history_bp.route('/descargar-historico-excel')
 @login_required
 def descargar_historico_excel():
-    """Descarga el historial de provisiones en formato Excel con datos para gráficos"""
     conn = None
     cursor = None
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
-
-        # Obtener todos los datos del historial
+        cursor = conn.cursor(dictionary=True)
+        
+        # Obtener TODOS los datos del historial
         cursor.execute('''
-            SELECT
-                semana,
-                tipo_nomina,
-                cant_aprobados,
-                cant_rechazados,
-                usuario_nombre,
-                fecha_creacion
+            SELECT semana, tipo_nomina, cant_aprobados, cant_rechazados, 
+                   usuario_nombre, fecha_creacion, ip_address
             FROM provisiones_historial
             ORDER BY fecha_creacion DESC
         ''')
-
         logs = cursor.fetchall()
-
-        # Calcular estadísticas por tipo de nómina
-        cursor.execute('''
-            SELECT
-                tipo_nomina,
-                SUM(cant_aprobados) as total_aprobados,
-                SUM(cant_rechazados) as total_rechazados,
-                COUNT(*) as total_provisiones
-            FROM provisiones_historial
-            GROUP BY tipo_nomina
-        ''')
-
-        stats_nominas = cursor.fetchall()
-
-        # Crear DataFrames
-        df_logs = pd.DataFrame(logs, columns=[
-            'Semana', 'Tipo_Nómina', 'Aprobados', 'Rechazados', 'Usuario', 'Fecha_Provisión'
-        ])
-
-        # Convertir tipos de nómina
-        df_logs['Tipo_Nómina'] = df_logs['Tipo_Nómina'].apply(
-            lambda x: 'Semanal' if x == '1' else 'Quincenal' if x == '2' else x
-        )
-
-        df_stats = pd.DataFrame(stats_nominas, columns=[
-            'Tipo_Nómina', 'Total_Aprobados', 'Total_Rechazados', 'Total_Provisiones'
-        ])
-
-        df_stats['Tipo_Nómina'] = df_stats['Tipo_Nómina'].apply(
-            lambda x: 'Semanal' if x == '1' else 'Quincenal' if x == '2' else x
-        )
-
-        # Estadísticas generales
-        total_aprobados = df_logs['Aprobados'].sum()
-        total_rechazados = df_logs['Rechazados'].sum()
-        total_general = total_aprobados + total_rechazados
-
-        stats_generales = {
-            'Métrica': [
-                'Total de Provisiones',
-                'Total Empleados Aprobados',
-                'Total Empleados Rechazados',
-                'Total General de Empleados',
-                'Porcentaje de Aprobación',
-                'Porcentaje de Rechazo',
-                'Fecha de Generación'
-            ],
-            'Valor': [
-                len(df_logs),
-                total_aprobados,
-                total_rechazados,
-                total_general,
-                f"{(total_aprobados/total_general*100):.1f}%" if total_general > 0 else "0%",
-                f"{(total_rechazados/total_general*100):.1f}%" if total_general > 0 else "0%",
-                datetime.now().strftime("%d/%m/%Y %H:%M")
-            ]
-        }
-
-        df_generales = pd.DataFrame(stats_generales)
-
-        # Crear archivo Excel en memoria
-        output = BytesIO()
-
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            # Hoja 1: Datos completos
-            df_logs.to_excel(writer, sheet_name='Provisiones_Detalladas', index=False)
-
-            # Hoja 2: Estadísticas generales
-            df_generales.to_excel(writer, sheet_name='Estadísticas_Generales', index=False)
-
-            # Hoja 3: Estadísticas por nómina
-            df_stats.to_excel(writer, sheet_name='Estadísticas_por_Nómina', index=False)
-
-            # Hoja 4: Datos para gráficos
-            datos_graficos = {
-                'Categoría': ['Aprobados', 'Rechazados'],
-                'Total_General': [total_aprobados, total_rechazados],
-                'Semanal_Aprobados': [df_stats[df_stats['Tipo_Nómina'] == 'Semanal']['Total_Aprobados'].iloc[0] if any(df_stats['Tipo_Nómina'] == 'Semanal') else 0, 0],
-                'Semanal_Rechazados': [0, df_stats[df_stats['Tipo_Nómina'] == 'Semanal']['Total_Rechazados'].iloc[0] if any(df_stats['Tipo_Nómina'] == 'Semanal') else 0],
-                'Quincenal_Aprobados': [df_stats[df_stats['Tipo_Nómina'] == 'Quincenal']['Total_Aprobados'].iloc[0] if any(df_stats['Tipo_Nómina'] == 'Quincenal') else 0, 0],
-                'Quincenal_Rechazados': [0, df_stats[df_stats['Tipo_Nómina'] == 'Quincenal']['Total_Rechazados'].iloc[0] if any(df_stats['Tipo_Nómina'] == 'Quincenal') else 0]
-            }
-
-            df_graficos = pd.DataFrame(datos_graficos)
-            df_graficos.to_excel(writer, sheet_name='Datos_para_Gráficos', index=False)
-
-            # Ajustar anchos de columnas para todas las hojas
-            for sheet_name in writer.sheets:
-                worksheet = writer.sheets[sheet_name]
-                for col_idx, column_cells in enumerate(worksheet.columns, 1):
-                    max_length = 0
-                    column_letter = get_column_letter(col_idx)
-                    for cell in column_cells:
-                        try:
-                            if cell.value:
-                                length = len(str(cell.value))
-                                if length > max_length:
-                                    max_length = length
-                        except:
-                            pass
-                    worksheet.column_dimensions[column_letter].width = min(max_length + 2, 50)
-
-        output.seek(0)
-
-        # Nombre del archivo
-        fecha_actual = datetime.now().strftime("%Y-%m-%d")
-        filename = f"historial_provisiones_completo_{fecha_actual}.xlsx"
-
-        return send_file(
-            output,
-            as_attachment=True,
-            download_name=filename,
-            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-        )
-
+        
+        # Calcular estadísticas totales
+        totalAprob = sum(log.get('cant_aprobados', 0) for log in logs)
+        totalRecha = sum(log.get('cant_rechazados', 0) for log in logs)
+        total = totalAprob + totalRecha
+        total_records = len(logs)
+        
+        # Usar el nuevo servicio personalizado
+        return generar_reporte_historico_excel(logs, total_records, totalAprob, totalRecha, total)
+        
     except Exception as e:
+        print(f"Error al generar Excel: {e}")
         flash(f'Error al generar el archivo Excel: {str(e)}', 'error')
         return redirect(url_for('history.history'))
     finally:

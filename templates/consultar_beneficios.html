@@ -6,16 +6,16 @@
 <style>
     /* Panel de filtros — mismo estilo que empleados */
     .filter-card {
-        background: linear-gradient(135deg, rgba(255,255,255,0.97), rgba(234,242,251,0.97));
+        background: linear-gradient(135deg, rgba(255, 255, 255, 0.97), rgba(234, 242, 251, 0.97));
         border: none;
         border-radius: 10px;
         border-left: 4px solid #2c7be5;
-        box-shadow: 0 2px 10px rgba(44,123,229,0.08);
+        box-shadow: 0 2px 10px rgba(44, 123, 229, 0.08);
     }
 
     .filter-card .card-header {
         background: transparent;
-        border-bottom: 1px solid rgba(44,123,229,0.12);
+        border-bottom: 1px solid rgba(44, 123, 229, 0.12);
         padding: 0.6rem 1rem;
         font-size: 0.82rem;
         font-weight: 600;
@@ -33,7 +33,6 @@
         margin-bottom: 4px;
     }
 
-    /* Override global CSS que centra los inputs */
     .filter-card .form-control,
     .filter-card .form-select {
         text-align: left !important;
@@ -42,14 +41,14 @@
         font-size: 0.8rem;
         border: 1.5px solid #c8d9f0;
         border-radius: 6px;
-        background: rgba(255,255,255,0.85);
+        background: rgba(255, 255, 255, 0.85);
         padding: 0.3rem 0.6rem;
     }
 
     .filter-card .form-control:focus,
     .filter-card .form-select:focus {
         border-color: #2c7be5;
-        box-shadow: 0 0 0 0.15rem rgba(44,123,229,0.18);
+        box-shadow: 0 0 0 0.15rem rgba(44, 123, 229, 0.18);
     }
 
     .filter-card .btn {
@@ -61,7 +60,7 @@
         border-radius: 10px;
         overflow: hidden;
         border: none;
-        box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+        box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
     }
 
     .table thead {
@@ -93,28 +92,54 @@
         font-size: 0.72rem;
     }
 
-    .table-custom { font-size: 0.82rem; }
-    .table-custom td { padding: 0.38rem 0.6rem; vertical-align: middle; }
-    .table-custom thead th { padding: 0.5rem 0.6rem; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.5px; }
-
-    /* Scroll de tabla — máx 10 filas */
-    .table-scroll {
-        max-height: 490px;
-        overflow-y: auto;
-        border-radius: 0 0 8px 8px;
+    .table-custom {
+        font-size: 0.82rem;
     }
-    .table-scroll thead th {
-        position: sticky;
-        top: 0;
-        z-index: 2;
+
+    .table-custom td {
+        padding: 0.38rem 0.6rem;
+        vertical-align: middle;
+    }
+
+    .table-custom thead th {
+        padding: 0.5rem 0.6rem;
+        font-size: 0.78rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
 
     @media print {
-        .filter-card, .btn-group, .navbar, .search-btn,
-        .btn-outline-secondary, .card-header .d-flex { display: none !important; }
-        .container { width: 100% !important; max-width: none !important; margin: 0 !important; padding: 0 !important; }
-        .results-card { box-shadow: none !important; border: 1px solid #ddd !important; }
-        .table-responsive { overflow: visible !important; }
+
+        .filter-card,
+        .btn-group,
+        .navbar,
+        .search-btn,
+        .btn-outline-secondary,
+        .card-header .d-flex,
+        .btn-print-hide {
+            display: none !important;
+        }
+
+        .container {
+            width: 100% !important;
+            max-width: none !important;
+            margin: 0 !important;
+            padding: 0 !important;
+        }
+
+        .results-card {
+            box-shadow: none !important;
+            border: 1px solid #ddd !important;
+        }
+
+        .table-responsive {
+            overflow: visible !important;
+        }
+
+        body {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
     }
 </style>
 {% endblock %}
@@ -137,27 +162,23 @@
             <span>Buscar y Filtrar Beneficios</span>
         </div>
         <div class="card-body py-3">
-            <form method="GET" action="{{ url_for('provision.consultar_beneficios') }}">
+            <form method="GET" action="{{ url_for('provision.consultar_beneficios') }}" id="filtrosForm">
                 <div class="row g-3 align-items-end">
-
                     <div class="col-lg-2 col-md-4">
                         <small class="filter-label"><i class="fas fa-id-card me-1"></i>Cédula</small>
                         <input type="text" name="cedula" class="form-control" placeholder="Ej: 12345678"
                             value="{{ filters.cedula or '' }}">
                     </div>
-
                     <div class="col-lg-2 col-md-4">
                         <small class="filter-label"><i class="fas fa-user me-1"></i>Nombre</small>
                         <input type="text" name="nombre" class="form-control" placeholder="Nombre/Apellido"
                             value="{{ filters.nombre or '' }}">
                     </div>
-
                     <div class="col-lg-1 col-md-4">
                         <small class="filter-label"><i class="fas fa-calendar-week me-1"></i>Semana</small>
                         <input type="number" name="semana" class="form-control" placeholder="#"
                             value="{{ filters.semana or '' }}">
                     </div>
-
                     <div class="col-lg-2 col-md-4">
                         <small class="filter-label"><i class="fas fa-money-bill-wave me-1"></i>Nómina</small>
                         <select name="tipo_nomina" class="form-select">
@@ -166,7 +187,6 @@
                             <option value="2" {% if filters.tipo_nomina=='2' %}selected{% endif %}>Quincenal</option>
                         </select>
                     </div>
-
                     <div class="col-lg-1 col-md-4">
                         <small class="filter-label"><i class="fas fa-toggle-on me-1"></i>Estatus</small>
                         <select name="recibio" class="form-select">
@@ -175,24 +195,23 @@
                             <option value="0" {% if filters.recibio=='0' %}selected{% endif %}>No recibió</option>
                         </select>
                     </div>
-
                     <div class="col-lg-2 col-md-4">
                         <small class="filter-label"><i class="fas fa-calendar-alt me-1"></i>Fecha</small>
                         <input type="date" name="fecha" class="form-control" value="{{ filters.fecha or '' }}">
                     </div>
-
                     <div class="col-lg-2 col-md-12 d-flex gap-2">
                         <small class="filter-label w-100">&nbsp;</small>
-                        <button type="submit" class="btn btn-primary flex-grow-1 d-flex align-items-center justify-content-center gap-1 search-btn">
+                        <button type="submit"
+                            class="btn btn-primary flex-grow-1 d-flex align-items-center justify-content-center gap-1 search-btn">
                             <i class="fas fa-search"></i>
                             <span style="font-size:0.75rem">Buscar</span>
                         </button>
-                        <a href="{{ url_for('provision.consultar_beneficios') }}" class="btn btn-outline-secondary d-flex align-items-center justify-content-center"
+                        <a href="{{ url_for('provision.consultar_beneficios') }}"
+                            class="btn btn-outline-secondary d-flex align-items-center justify-content-center"
                             title="Limpiar filtros">
                             <i class="fas fa-sync-alt"></i>
                         </a>
                     </div>
-
                 </div>
             </form>
         </div>
@@ -203,17 +222,22 @@
         <div class="card-header bg-white d-flex justify-content-between align-items-center py-2 px-3">
             <h6 class="mb-0 text-secondary">
                 <i class="fas fa-list me-2"></i>Total: <strong>{{ total }}</strong>
-                {% if total_pages > 1 %}<span class="text-muted ms-2" style="font-size:0.78rem">(pág. {{ page }}/{{ total_pages }})</span>{% endif %}
+                {% if total_pages > 1 %}<span class="text-muted ms-2" style="font-size:0.78rem">(pág. {{ page }}/{{
+                    total_pages }})</span>{% endif %}
             </h6>
             {% if reporte %}
             <div class="btn-group">
-                <a href="{{ url_for('provision.exportar_reporte_beneficiarios', **request.args) }}"
+                <!-- Botón Excel - Exporta con los filtros actuales -->
+                <a href="{{ url_for('provision.exportar_beneficios_excel', **request.args) }}"
                     class="btn btn-success btn-sm">
                     <i class="fas fa-file-excel me-1"></i>Excel
                 </a>
-                <button class="btn btn-danger btn-sm" onclick="window.print()">
+                <!-- Botón PDF - Exporta con los filtros actuales -->
+                <a href="{{ url_for('provision.exportar_beneficios_pdf', **request.args) }}"
+                    class="btn btn-danger btn-sm">
                     <i class="fas fa-file-pdf me-1"></i>PDF
-                </button>
+                </a>
+                <!-- Botón Imprimir -->
                 <button class="btn btn-info btn-sm text-white" onclick="window.print()">
                     <i class="fas fa-print me-1"></i>Imprimir
                 </button>
@@ -223,7 +247,7 @@
         <div class="card-body p-0">
             {% if reporte %}
             <div class="table-responsive">
-                <table class="table table-hover mb-0 table-sm table-custom">
+                <table class="table table-hover mb-0 table-sm table-custom" id="tablaBeneficios">
                     <thead class="table-light">
                         <tr>
                             <th class="ps-3">Empleado</th>
@@ -285,43 +309,36 @@
             {% endif %}
 
             {% if total_pages > 1 %}
-            <!-- Paginación -->
             <div class="card-footer bg-white border-top py-2 px-3">
                 <nav aria-label="Paginación">
                     <ul class="pagination pagination-sm justify-content-center mb-0">
-
-                        {# Construir args sin 'page' para pasarlos en los links #}
                         {% set base = {} %}
                         {% for k, v in request.args.items() %}
-                            {% if k != 'page' and v %}{% set _ = base.update({k: v}) %}{% endif %}
+                        {% if k != 'page' and v %}{% set _ = base.update({k: v}) %}{% endif %}
                         {% endfor %}
-
                         <li class="page-item {{ 'disabled' if page == 1 }}">
-                            <a class="page-link rounded-pill px-3 me-2" href="{{ url_for('provision.consultar_beneficios', page=page-1, **base) }}">Anterior</a>
+                            <a class="page-link rounded-pill px-3 me-2"
+                                href="{{ url_for('provision.consultar_beneficios', page=page-1, **base) }}">Anterior</a>
                         </li>
-
                         {% for p in range(1, total_pages + 1) %}
-                            {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %}
-                                <li class="page-item {{ 'active' if p == page }}">
-                                    <a class="page-link rounded-circle mx-1" 
-                                       style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;"
-                                       href="{{ url_for('provision.consultar_beneficios', page=p, **base) }}">{{ p }}</a>
-                                </li>
+                        {% if p == 1 or p == total_pages or (p >= page - 2 and p <= page + 2) %} <li
+                            class="page-item {{ 'active' if p == page }}">
+                            <a class="page-link rounded-circle mx-1"
+                                style="width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;"
+                                href="{{ url_for('provision.consultar_beneficios', page=p, **base) }}">{{ p }}</a>
+                            </li>
                             {% elif p == page - 3 or p == page + 3 %}
-                                <li class="page-item disabled"><span class="page-link border-0">…</span></li>
+                            <li class="page-item disabled"><span class="page-link border-0">…</span></li>
                             {% endif %}
-                        {% endfor %}
-
-                        <li class="page-item {{ 'disabled' if page == total_pages }}">
-                            <a class="page-link rounded-pill px-3 ms-2" href="{{ url_for('provision.consultar_beneficios', page=page+1, **base) }}">Siguiente</a>
-                        </li>
-
-
+                            {% endfor %}
+                            <li class="page-item {{ 'disabled' if page == total_pages }}">
+                                <a class="page-link rounded-pill px-3 ms-2"
+                                    href="{{ url_for('provision.consultar_beneficios', page=page+1, **base) }}">Siguiente</a>
+                            </li>
                     </ul>
                 </nav>
             </div>
             {% endif %}
-
         </div>
     </div>
 </div>
@@ -329,7 +346,6 @@
 
 {% block scripts %}
 <script>
-    // Animación suave al cargar resultados
     document.addEventListener('DOMContentLoaded', function () {
         const rows = document.querySelectorAll('tbody tr');
         rows.forEach((row, index) => {

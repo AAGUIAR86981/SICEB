@@ -302,4 +302,89 @@ class Provision:
             return []
         finally:
             if cursor: cursor.close()
-            if conn: conn.close()
+            if conn: conn.close()            
+
+    # models/provision.py - Agrega esta función al final del archivo
+
+def obtener_reporte_beneficios_completo(cedula='', nombre='', semana='', tipo_nomina='', recibio='', fecha=''):
+    """
+    Obtiene el reporte completo de beneficios sin paginación
+    para exportar a Excel y PDF
+    """
+    from config.database import get_db_connection
+    import json
+    
+    conn = get_db_connection()
+    if not conn:
+        return []
+    
+    cursor = conn.cursor(dictionary=True)
+    
+    # Consulta adaptada a tu estructura de base de datos
+    query = """
+        SELECT 
+            e.id,
+            e.cedula,
+            CONCAT(COALESCE(e.nombre, ''), ' ', COALESCE(e.apellido, '')) as nombre_completo,
+            e.departamento,
+            ph.tipo_provision as tipo_nomina,
+            ph.semana,
+            ph.fecha_creacion as fecha_entrega,
+            ph.productos,
+            ph.cant_aprobados as recibio
+        FROM provisiones_historial ph
+        LEFT JOIN empleados e ON 1=1
+        WHERE 1=1
+    """
+    params = []
+    
+    if cedula:
+        query += " AND e.cedula = %s"
+        params.append(cedula)
+    
+    if nombre:
+        query += " AND (e.nombre LIKE %s OR e.apellido LIKE %s)"
+        params.append(f"%{nombre}%")
+        params.append(f"%{nombre}%")
+    
+    if semana:
+        query += " AND ph.semana = %s"
+        params.append(semana)
+    
+    if tipo_nomina:
+        query += " AND ph.tipo_provision = %s"
+        params.append('Semanal' if tipo_nomina == '1' else 'Quincenal')
+    
+    if recibio and recibio != '':
+        query += " AND ph.cant_aprobados > 0"
+    
+    if fecha:
+        query += " AND DATE(ph.fecha_creacion) = %s"
+        params.append(fecha)
+    
+    query += " ORDER BY ph.fecha_creacion DESC LIMIT 2000"
+    
+    cursor.execute(query, params)
+    resultados = cursor.fetchall()
+    
+    # Procesar productos JSON
+    for item in resultados:
+        if item.get('productos'):
+            try:
+                productos = json.loads(item['productos'])
+                if isinstance(productos, list):
+                    item['productos_list'] = productos
+                else:
+                    item['productos_list'] = []
+            except:
+                item['productos_list'] = []
+        else:
+            item['productos_list'] = []
+        
+        # Asegurar que recibio sea booleano
+        item['recibio'] = item.get('recibio', 0) > 0
+    
+    cursor.close()
+    conn.close()
+    
+    return resultados

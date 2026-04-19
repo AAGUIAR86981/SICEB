@@ -1,0 +1,148 @@
+{% extends 'layout.html' %}
+{% block title %}Configurar Provisión{% endblock %}
+
+{% block script %}
+<script src="{{ url_for('static', filename='jquery-3.7.1.min.js') }}"></script>
+<script>
+    $(document).ready(function () {
+        $("#next1").click(function () {
+            $(this).hide();
+        });
+        
+        $("#next2").click(function () {
+            $(this).hide();
+        });
+
+        // Validar formulario antes de enviar
+        $("form").submit(function(e) {
+            const semanaSeleccionada = $('input[name="SemanaProv"]:checked').length;
+            const nominaSeleccionada = $('input[name="Nomina"]:checked').length;
+            const fechaSeleccionada = $('#fecha_inicial').val();
+            
+            if (!semanaSeleccionada || !nominaSeleccionada || !fechaSeleccionada) {
+                e.preventDefault();
+                alert('Por favor, complete todos los pasos de la configuración');
+                return false;
+            }
+        });
+    });
+
+    function setSecondDate() {
+        var days = document.getElementById("select").value;
+        var date = new Date(document.getElementById("fecha_inicial").value);
+        date.setDate(date.getDate() + parseInt(days));
+        document.getElementById("date2").valueAsDate = date;
+    }
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header bg-primary text-white">
+            <h4 class="mb-0">Configurar Nueva Provisión</h4>
+        </div>
+        <div class="card-body">
+            <form method="post" action="{{ url_for('provision.configurar_provision') }}">
+                <div class="row">
+                    <!-- Paso 1: Seleccionar Semana -->
+                    <div class="col-md-4">
+                        <div class="step-section">
+                            <h5>Paso 1: Seleccione la semana</h5>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" id="semProv1" name="SemanaProv" value="1" required checked />
+                                <label class="form-check-label" for="semProv1">Semana - 1</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" id="semProv2" name="SemanaProv" value="2" required />
+                                <label class="form-check-label" for="semProv2">Semana - 2</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" id="semProv3" name="SemanaProv" value="3" required />
+                                <label class="form-check-label" for="semProv3">Semana - 3</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" id="semProv4" name="SemanaProv" value="4" required />
+                                <label class="form-check-label" for="semProv4">Semana - 4</label>
+                            </div>
+                            <button id="next1" class="btn btn-primary mt-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapseNomina">
+                                Siguiente →
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Paso 2: Seleccionar Nómina -->
+                    <div class="col-md-4">
+                        <div class="collapse" id="collapseNomina">
+                            <div class="step-section">
+                                <h5>Paso 2: Seleccione el tipo de Nómina</h5>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" id="nomSem" name="Nomina" value="1" required />
+                                    <label class="form-check-label" for="nomSem">Nómina Semanal</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" id="nomQuin" name="Nomina" value="2" required />
+                                    <label class="form-check-label" for="nomQuin">Nómina Quincenal</label>
+                                </div>
+                                <button id="next2" class="btn btn-primary mt-3" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFecha">
+                                    Siguiente →
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Paso 3: Seleccionar Fecha -->
+                    <div class="col-md-4">
+                        <div class="collapse" id="collapseFecha">
+                            <div class="step-section">
+                                <h5>Paso 3: Seleccione la fecha inicial</h5>
+                                <div class="mb-3">
+                                    <label for="fecha_inicial" class="form-label">Fecha Inicial:</label>
+                                    <input type="date" class="form-control" id="fecha_inicial" name="fecha_inicial" required onchange="setSecondDate()">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="select" class="form-label">Días a agregar:</label>
+                                    <select class="form-select" id="select" onchange="setSecondDate()">
+                                        <option value="7">7 días (1 semana)</option>
+                                        <option value="14">14 días (2 semanas)</option>
+                                        <option value="30">30 días (1 mes)</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="date2" class="form-label">Fecha Final:</label>
+                                    <input type="date" class="form-control" id="date2" readonly>
+                                </div>
+                                
+                                <button type="submit" class="btn btn-success">✅ Guardar Configuración</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="mt-4 text-center">
+        <a href="{{ url_for('provision.make_provision') }}" class="btn btn-outline-primary">📋 Realizar Provisión</a>
+        <a href="{{ url_for('auth.index') }}" class="btn btn-outline-dark">🏠 Ir al Inicio</a>
+    </div>
+</div>
+
+<style>
+    .step-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        height: 100%;
+        border-left: 4px solid #007bff;
+    }
+    .form-check {
+        margin-bottom: 10px;
+        padding: 8px;
+        background: white;
+        border-radius: 5px;
+    }
+</style>
+{% endblock %}

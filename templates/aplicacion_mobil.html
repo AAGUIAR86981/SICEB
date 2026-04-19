@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="theme-color" content="#0d6efd">
+    <title>SICEB Mobile</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background: #f5f7fa;
+            padding-bottom: 70px;
+        }
+
+        /* Pantalla de login */
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+
+        .login-card {
+            background: white;
+            border-radius: 25px;
+            padding: 35px 25px;
+            width: 100%;
+            max-width: 350px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .login-card h1 {
+            font-size: 2rem;
+            font-weight: bold;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .login-card .subtitle {
+            text-align: center;
+            color: #6c757d;
+            margin-bottom: 30px;
+            font-size: 0.9rem;
+        }
+
+        .input-group-custom {
+            margin-bottom: 20px;
+        }
+
+        .input-group-custom i {
+            position: absolute;
+            left: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #adb5bd;
+            z-index: 10;
+        }
+
+        .input-group-custom input {
+            width: 100%;
+            padding: 14px 15px 14px 45px;
+            border: 2px solid #e9ecef;
+            border-radius: 15px;
+            font-size: 1rem;
+            transition: all 0.3s;
+        }
+
+        .input-group-custom input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 15px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn-login:active {
+            transform: scale(0.98);
+        }
+
+        /* App principal */
+        .app-container {
+            display: none;
+            min-height: 100vh;
+        }
+
+        /* Header móvil */
+        .mobile-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            padding-top: 50px;
+            border-radius: 0 0 25px 25px;
+        }
+
+        .user-greeting {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+
+        /* Tarjetas de estadísticas */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            padding: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 20px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        .stat-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.8rem;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+        /* Navegación inferior */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: white;
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 20px;
+            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+            border-radius: 25px 25px 0 0;
+        }
+
+        .nav-item {
+            text-align: center;
+            color: #adb5bd;
+            transition: all 0.3s;
+            cursor: pointer;
+            flex: 1;
+        }
+
+        .nav-item.active {
+            color: #667eea;
+        }
+
+        .nav-item i {
+            font-size: 1.5rem;
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .nav-item span {
+            font-size: 0.7rem;
+        }
+
+        /* Pantallas */
+        .screen {
+            display: none;
+            padding: 20px;
+            animation: fadeIn 0.3s;
+        }
+
+        .screen.active-screen {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Lista de empleados */
+        .employee-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        .employee-item {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+        }
+
+        .employee-name {
+            font-weight: 600;
+        }
+
+        .employee-dept {
+            font-size: 0.8rem;
+            color: #6c757d;
+        }
+
+        .badge-active {
+            background: #d1e7dd;
+            color: #0f5132;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+        }
+
+        /* Historial */
+        .history-item {
+            background: white;
+            border-radius: 15px;
+            padding: 15px;
+            margin-bottom: 10px;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e9ecef;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- Pantalla de Login -->
+    <div id="loginScreen" class="login-container">
+        <div class="login-card">
+            <h1>SICEB</h1>
+            <div class="subtitle">Sistema de Control de Beneficios</div>
+
+            <div class="input-group-custom">
+                <i class="fas fa-user"></i>
+                <input type="text" id="username" placeholder="Usuario" autocomplete="off">
+            </div>
+
+            <div class="input-group-custom">
+                <i class="fas fa-lock"></i>
+                <input type="password" id="password" placeholder="Contraseña">
+            </div>
+
+            <button class="btn-login" onclick="login()">
+                <i class="fas fa-sign-in-alt me-2"></i> Ingresar
+            </button>
+        </div>
+    </div>
+
+    <!-- App Principal -->
+    <div id="appContainer" class="app-container">
+        <div class="mobile-header">
+            <div class="user-greeting" id="userName">Bienvenido</div>
+            <div class="user-email" id="userEmail" style="font-size: 0.8rem; opacity: 0.9"></div>
+        </div>
+
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-number" id="totalEmpleados">0</div>
+                <div class="stat-label">Total Empleados</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="empleadosActivos">0</div>
+                <div class="stat-label">Activos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalDeptos">0</div>
+                <div class="stat-label">Departamentos</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalProvisiones">0</div>
+                <div class="stat-label">Provisiones</div>
+            </div>
+        </div>
+
+        <!-- Pantallas -->
+        <div id="screenDashboard" class="screen active-screen">
+            <div class="loading" id="dashboardLoading">
+                <div class="spinner"></div>
+                <div>Cargando datos...</div>
+            </div>
+        </div>
+
+        <div id="screenEmployees" class="screen">
+            <div class="loading" id="employeesLoading">
+                <div class="spinner"></div>
+                <div>Cargando empleados...</div>
+            </div>
+            <ul class="employee-list" id="employeeList"></ul>
+        </div>
+
+        <div id="screenHistory" class="screen">
+            <div class="loading" id="historyLoading">
+                <div class="spinner"></div>
+                <div>Cargando historial...</div>
+            </div>
+            <div id="historyList"></div>
+        </div>
+
+        <!-- Navegación inferior -->
+        <div class="bottom-nav">
+            <div class="nav-item active" onclick="showScreen('dashboard')">
+                <i class="fas fa-chart-line"></i>
+                <span>Dashboard</span>
+            </div>
+            <div class="nav-item" onclick="showScreen('employees')">
+                <i class="fas fa-users"></i>
+                <span>Empleados</span>
+            </div>
+            <div class="nav-item" onclick="showScreen('history')">
+                <i class="fas fa-history"></i>
+                <span>Historial</span>
+            </div>
+            <div class="nav-item" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i>
+                <span>Salir</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = window.location.origin; // Usa la misma URL del servidor
+        let authToken = null;
+        let currentUser = null;
+
+        // Login
+        async function login() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+
+            if (!username || !password) {
+                alert('Ingrese usuario y contraseña');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/api/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    authToken = data.token;
+                    currentUser = data.user;
+                    document.getElementById('userName').innerHTML = `👋 Hola, ${data.user.name || data.user.username}`;
+                    document.getElementById('userEmail').innerHTML = data.user.username;
+                    document.getElementById('loginScreen').style.display = 'none';
+                    document.getElementById('appContainer').style.display = 'block';
+                    loadDashboard();
+                    loadEmployees();
+                    loadHistory();
+                } else {
+                    alert('Credenciales incorrectas');
+                }
+            } catch (error) {
+                alert('Error de conexión: ' + error.message);
+            }
+        }
+
+        // Cargar Dashboard
+        async function loadDashboard() {
+            try {
+                const response = await fetch(`${API_URL}/api/dashboard`);
+                const data = await response.json();
+
+                if (data.success) {
+                    document.getElementById('totalEmpleados').innerText = data.data.total_empleados;
+                    document.getElementById('empleadosActivos').innerText = data.data.empleados_activos;
+                    document.getElementById('totalDeptos').innerText = data.data.total_departamentos;
+                    document.getElementById('totalProvisiones').innerText = data.data.total_empleados || 0;
+                }
+                document.getElementById('dashboardLoading').style.display = 'none';
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                document.getElementById('dashboardLoading').innerHTML = '<p class="text-danger">Error cargando datos</p>';
+            }
+        }
+
+        // Cargar Empleados
+        async function loadEmployees() {
+            try {
+                const response = await fetch(`${API_URL}/api/empleados`);
+                const data = await response.json();
+
+                if (data.success && data.data) {
+                    const list = document.getElementById('employeeList');
+                    list.innerHTML = data.data.map(emp => `
+                    <li class="employee-item">
+                        <div>
+                            <div class="employee-name">${emp.nombre} ${emp.apellido || ''}</div>
+                            <div class="employee-dept">📁 ${emp.departamento} | 🆔 ${emp.cedula}</div>
+                        </div>
+                        <span class="badge-active">${emp.estado}</span>
+                    </li>
+                `).join('');
+                }
+                document.getElementById('employeesLoading').style.display = 'none';
+            } catch (error) {
+                console.error('Error loading employees:', error);
+                document.getElementById('employeesLoading').innerHTML = '<p class="text-danger">Error cargando empleados</p>';
+            }
+        }
+
+        // Cargar Historial
+        async function loadHistory() {
+            try {
+                const response = await fetch(`${API_URL}/api/historial`);
+                const data = await response.json();
+
+                if (data.success && data.data) {
+                    const historyDiv = document.getElementById('historyList');
+                    historyDiv.innerHTML = data.data.map(item => `
+                    <div class="history-item">
+                        <strong>${item.tipo_provision}</strong> - Semana ${item.semana}<br>
+                        <small class="text-muted">📅 ${item.fecha}</small><br>
+                        <span class="badge-active">✅ ${item.cant_aprobados} aprobados</span>
+                    </div>
+                `).join('');
+                }
+                document.getElementById('historyLoading').style.display = 'none';
+            } catch (error) {
+                console.error('Error loading history:', error);
+                document.getElementById('historyLoading').innerHTML = '<p class="text-danger">Error cargando historial</p>';
+            }
+        }
+
+        // Cambiar pantalla
+        function showScreen(screen) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active-screen'));
+            document.getElementById(`screen${screen.charAt(0).toUpperCase() + screen.slice(1)}`).classList.add('active-screen');
+
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            event.target.closest('.nav-item').classList.add('active');
+        }
+
+        // Logout
+        function logout() {
+            authToken = null;
+            currentUser = null;
+            document.getElementById('loginScreen').style.display = 'flex';
+            document.getElementById('appContainer').style.display = 'none';
+            document.getElementById('username').value = '';
+            document.getElementById('password').value = '';
+        }
+    </script>
+</body>
+
+</html>

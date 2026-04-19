@@ -330,28 +330,108 @@ def consultar_beneficios():
         return redirect(url_for('provision.historial_provisiones'))
 
 
-@provision_bp.route('/exportar_reporte_beneficiarios')
-@login_required
-@permission_required('create_provisions')
-def exportar_reporte_beneficiarios():
-    try:
-        filters = {
-            'cedula': request.args.get('cedula'), 'nombre': request.args.get('nombre'),
-            'semana': request.args.get('semana'), 'fecha': request.args.get('fecha'),
-            'recibio': request.args.get('recibio')
-        }
-        recibio_int = int(filters['recibio']) if filters['recibio'] in ['0', '1'] else None
-        reporte = Provision.get_beneficiary_report({'cedula': filters['cedula'], 'nombre': filters['nombre'], 
-                                                   'semana': filters['semana'], 'fecha': filters['fecha'], 
-                                                   'recibio': recibio_int})
-        
-        headers = ["Cédula", "Nombre Completo", "Departamento", "Estatus", "Semana", "Nómina", "Fecha Entrega"]
-        datos = [[item['cedula'], item['nombre_completo'], item['departamento'], 
-                 ("RECIBIÓ" if item['recibio'] else "NO RECIBIÓ"), item['semana'], 
-                 item['tipo_nomina'], item['fecha_entrega'].strftime('%d/%m/%Y %H:%M')] for item in reporte]
+# Agrega estas funciones al final de controllers/provision.py
 
-        return exportar_excel_generic(datos, headers, f"reporte_beneficiarios_{datetime.now().strftime('%Y%m%d')}", "REPORTE DE BENEFICIARIOS")
+@provision_bp.route('/exportar/beneficios/excel')
+def exportar_beneficios_excel():
+    """Exporta a Excel los resultados filtrados de beneficios"""
+    if not session.get('logged'):
+        return redirect(url_for('auth.login'))
+    
+    # Obtener filtros
+    cedula = request.args.get('cedula', '')
+    nombre = request.args.get('nombre', '')
+    semana = request.args.get('semana', '')
+    tipo_nomina = request.args.get('tipo_nomina', '')
+    recibio = request.args.get('recibio', '')
+    fecha = request.args.get('fecha', '')
+    
+    from services.report_excel import generar_reporte_beneficios_excel
+    from models.provision import obtener_reporte_beneficios_completo
+    
+    reporte = obtener_reporte_beneficios_completo(
+        cedula=cedula,
+        nombre=nombre,
+        semana=semana,
+        tipo_nomina=tipo_nomina,
+        recibio=recibio,
+        fecha=fecha
+    )
+    
+    return generar_reporte_beneficios_excel(reporte, request.args)
+
+@provision_bp.route('/exportar/beneficios/pdf')
+def exportar_beneficios_pdf():
+    """Exporta a PDF los resultados filtrados de beneficios"""
+    if not session.get('logged'):
+        return redirect(url_for('auth.login'))
+    
+    cedula = request.args.get('cedula', '')
+    nombre = request.args.get('nombre', '')
+    semana = request.args.get('semana', '')
+    tipo_nomina = request.args.get('tipo_nomina', '')
+    recibio = request.args.get('recibio', '')
+    fecha = request.args.get('fecha', '')
+    
+    from services.report_pdf import generar_reporte_beneficios_pdf
+    from models.provision import obtener_reporte_beneficios_completo
+    
+    reporte = obtener_reporte_beneficios_completo(
+        cedula=cedula,
+        nombre=nombre,
+        semana=semana,
+        tipo_nomina=tipo_nomina,
+        recibio=recibio,
+        fecha=fecha
+    )
+    
+    return generar_reporte_beneficios_pdf(reporte, request.args)
+
+@provision_bp.route('/exportar_mis_empleados_asignados_excel')
+@login_required
+def exportar_mis_empleados_asignados_excel():
+    """Exporta los empleados ASIGNADOS a Excel con formato personalizado"""
+    print("=" * 60)
+    print("🎯 FUNCIÓN NUEVA Y ÚNICA - ASIGNADOS")
+    print("=" * 60)
+    
+    try:
+        asignados = session.get('asignados', [])
+        print(f"Total asignados: {len(asignados)}")
+        
+        if not asignados:
+            flash('No hay empleados asignados para exportar', 'warning')
+            return redirect(url_for('provision.make_provision'))
+        
+        from services.resultado_provision_excel import generar_reporte_asignados_excel
+        return generar_reporte_asignados_excel(asignados, "ASIGNADOS")
+        
     except Exception as e:
-        logger.error(f"Error exportando: {e}")
-        flash('Error al exportar', 'error')
-        return redirect(url_for('provision.consultar_beneficios', **request.args))
+        print(f"Error: {e}")
+        flash('Error al generar Excel', 'error')
+        return redirect(url_for('provision.make_provision'))
+
+
+@provision_bp.route('/exportar_mis_empleados_invalidados_excel')
+@login_required
+def exportar_mis_empleados_invalidados_excel():
+    """Exporta los empleados INVALIDADOS a Excel con formato personalizado"""
+    print("=" * 60)
+    print("🎯 FUNCIÓN NUEVA Y ÚNICA - INVALIDADOS")
+    print("=" * 60)
+    
+    try:
+        invalidados = session.get('invalidados', [])
+        print(f"Total invalidados: {len(invalidados)}")
+        
+        if not invalidados:
+            flash('No hay empleados invalidados para exportar', 'warning')
+            return redirect(url_for('provision.make_provision'))
+        
+        from services.resultado_provision_excel import generar_reporte_asignados_excel
+        return generar_reporte_asignados_excel(invalidados, "INVALIDADOS")
+        
+    except Exception as e:
+        print(f"Error: {e}")
+        flash('Error al generar Excel', 'error')
+        return redirect(url_for('provision.make_provision'))

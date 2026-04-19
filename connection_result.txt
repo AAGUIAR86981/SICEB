@@ -1,0 +1,2 @@
+Test 1 (Configured): FAILED. Error: Access denied for user 'root'@'localhost' (using password: YES)
+Test 2 (Empty Password): FAILED. Error: Access denied for user 'root'@'localhost' (using password: NO)

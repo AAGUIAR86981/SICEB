@@ -4,6 +4,7 @@ from utils.decorators import login_required, permission_required
 from utils.helpers import log_user_activity, exportar_excel_generic, exportar_csv
 import math
 from datetime import datetime
+from config.database import get_db_connection
 
 # Módulo de Empleados: Aquí gestionamos toda la base de datos del personal (altas, bajas y cambios)
 employees_bp = Blueprint('employees', __name__, url_prefix='/empleados')
@@ -175,3 +176,59 @@ def view_employee(id):
         flash('Empleado no encontrado', 'error')
         return redirect(url_for('employees.list_employees'))
     return render_template('employees/view.html', employee=employee)
+
+@employees_bp.route('/exportar/excel')
+@login_required
+def exportar_empleados_excel():
+    """Exporta la lista de empleados a Excel con formato personalizado"""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        
+        search = request.args.get('search', '')
+        tipo_nomina = request.args.get('tipo_nomina', '')
+        estado = request.args.get('estado', '')
+        
+        # Consulta SIMPLE - solo tabla empleados
+        query = """
+            SELECT 
+                id, 
+                cedula, 
+                nombre, 
+                apellido, 
+                departamento,
+                boolValidacion
+            FROM empleados
+            WHERE 1=1
+        """
+        params = []
+        
+        if search:
+            query += " AND (cedula LIKE %s OR nombre LIKE %s OR apellido LIKE %s OR departamento LIKE %s)"
+            search_param = f"%{search}%"
+            params.extend([search_param, search_param, search_param, search_param])
+        
+        if estado == 'activo':
+            query += " AND boolValidacion = 1"
+        elif estado == 'inactivo':
+            query += " AND boolValidacion = 0"
+        
+        query += " ORDER BY nombre"
+        
+        cursor.execute(query, params)
+        empleados = cursor.fetchall()
+        
+        cursor.close()
+        conn.close()
+        
+        if not empleados:
+            flash('No hay empleados para exportar', 'warning')
+            return redirect(url_for('employees.list_employees'))
+        
+        from services.empleado_excel import generar_reporte_empleados_excel
+        return generar_reporte_empleados_excel(empleados)
+        
+    except Exception as e:
+        print(f"Error al exportar empleados: {e}")
+        flash(f'Error al generar el archivo Excel: {str(e)}', 'error')
+        return redirect(url_for('employees.list_employees'))

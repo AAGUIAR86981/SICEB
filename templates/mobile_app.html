@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#121212">
+    <title>Líder Pollo - App Móvil</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://unpkg.com/feather-icons"></script>
+    <link rel="stylesheet" href="/static/mobile/css/style.css">
+</head>
+<body>
+    
+    <!-- PANTALLA 1: SPLASH SCREEN -->
+    <div id="splash-screen" class="view active-view">
+        <div class="logo-container pulse">
+            <h2>Líder Pollo</h2>
+            <p>Conectando...</p>
+        </div>
+    </div>
+
+    <!-- PANTALLA 2: LOGIN -->
+    <div id="login-view" class="view">
+        <div class="login-card">
+            <div class="login-header">
+                <h2>Bienvenido</h2>
+                <p>Ingresa tus credenciales</p>
+            </div>
+            
+            <form id="login-form">
+                <div class="input-group">
+                    <i data-feather="user"></i>
+                    <input type="text" id="username" placeholder="Usuario" required>
+                </div>
+                <div class="input-group">
+                    <i data-feather="lock"></i>
+                    <input type="password" id="password" placeholder="Contraseña" required>
+                </div>
+                
+                <p id="login-error" class="error-msg" style="display:none;"></p>
+                <button type="submit" class="btn-primary" id="btn-login">Iniciar Sesión</button>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="#" onclick="app.setView('reset-view')" style="color: var(--primary-light); font-size: 13px; text-decoration: none;">¿Olvidaste tu contraseña?</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- PANTALLA 3: RECUPERACIÓN DE CLAVE -->
+    <div id="reset-view" class="view">
+        <div class="login-card">
+            <div class="login-header">
+                <h2>Recuperar Clave</h2>
+                <p>Solicita un token temporal</p>
+            </div>
+            
+            <form id="reset-form">
+                <div class="input-group">
+                    <i data-feather="user"></i>
+                    <input type="text" id="reset-username" placeholder="Nombre de Usuario" required>
+                </div>
+                <div class="input-group">
+                    <i data-feather="mail"></i>
+                    <input type="email" id="reset-email" placeholder="Correo Electrónico" required>
+                </div>
+                
+                <p id="reset-msg" class="error-msg" style="display:none;"></p>
+                <button type="submit" class="btn-primary" id="btn-reset">Solicitar Acceso</button>
+                
+                <div style="text-align: center; margin-top: 20px;">
+                    <a href="#" onclick="app.setView('login-view')" style="color: var(--text-muted); font-size: 13px; text-decoration: none;">Volver al Login</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- PANTALLA 4: MAIN APP -->
+    <div id="app-view" class="view">
+        
+        <header class="app-header">
+            <div class="header-profile">
+                <div class="avatar" id="avatar-initials">U</div>
+                <div class="user-info">
+                    <p class="greeting" id="header-subtitle">Panel Principal</p>
+                    <h3 id="user-display-name">Usuario</h3>
+                </div>
+            </div>
+            <button class="icon-btn" id="btn-logout">
+                <i data-feather="log-out"></i>
+            </button>
+        </header>
+
+        <main class="app-content">
+            <!-- DASHBOARD STATS -->
+            <section class="dashboard-stats" id="dashboard-widgets">
+                <div class="stat-card glassmorphism">
+                    <div class="stat-icon purple"><i data-feather="users"></i></div>
+                    <div class="stat-info">
+                        <p>Total Empleados</p>
+                        <h2 id="stat-total-emp">--</h2>
+                    </div>
+                </div>
+                <div class="stat-card glassmorphism">
+                    <div class="stat-icon green"><i data-feather="check-circle"></i></div>
+                    <div class="stat-info">
+                        <p>Activos</p>
+                        <h2 id="stat-active-emp">--</h2>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CONTENEDOR DINÁMICO -->
+            <section id="dynamic-content-area" class="dynamic-area">
+                <!-- Data goes here -->
+            </section>
+        </main>
+        
+        <!-- Bottom Nav -->
+        <nav class="bottom-nav">
+            <a href="#" class="nav-item active" onclick="app.showSection('dashboard')">
+                <i data-feather="home"></i><span>Inicio</span>
+            </a>
+            <a href="#" class="nav-item" onclick="app.showSection('beneficiarios')">
+                <i data-feather="users"></i><span>Personal</span>
+            </a>
+            <a href="#" class="nav-item" onclick="app.showSection('historial')">
+                <i data-feather="list"></i><span>Historial</span>
+            </a>
+            <a href="#" class="nav-item" onclick="app.showSection('provision')">
+                <i data-feather="package"></i><span>Entregar</span>
+            </a>
+        </nav>
+    </div>
+
+    <script src="/static/mobile/js/app.js"></script>
+</body>
+</html>

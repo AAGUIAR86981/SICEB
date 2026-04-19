@@ -5,7 +5,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <title>SICEB - {% block title %}{% endblock %}</title>
+  <title>SICEB - {% block title %}Bienvenido{% endblock %}</title>
 
   <!-- Bootstrap CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
@@ -17,6 +17,8 @@
   <!-- Estilos personalizados -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}" />
 
+  <!-- Screensaver CSS -->
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/screensaver.css') }}" />
   {% block extra_css %}{% endblock %}
 
   <!-- Programas de ayuda (Scripts): Funciones que se cargan antes de mostrar la página -->
@@ -26,6 +28,7 @@
     console.log('SICEB: Estructura base cargada correctamente');
     {% endblock %}
   </script>
+
 </head>
 
 <body>
@@ -37,7 +40,9 @@
       <nav class="navbar navbar-expand-lg navbar-light bg-light">
         <div class="container">
           <a class="navbar-brand" href="#">
-            <i class="fas fa-database me-2"></i>SICEB
+            <a class="navbar-brand" href="#">
+              <i class="fas fa-database me-2"></i>SICEB
+            </a>
           </a>
           <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
             data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false"
@@ -93,28 +98,33 @@
                     class="fas fa-sign-out-alt me-1"></i><span>Salir</span></a>
               </li>
             </ul>
-            <div class="user-info text-end shadow-sm">
-              <div class="d-flex align-items-center justify-content-end gap-2">
-                <div class="text-white small fw-bold">
-                  <i class="far fa-calendar-alt me-1"></i> 
-                  {{ session.get('fecha') or now.strftime('%d/%m/%Y') if now else 'Fecha' }}
+            <div class="user-info text-end shadow-sm d-flex align-items-center gap-3">
+              <div>
+                <div class="d-flex align-items-center justify-content-end gap-2">
+                  <div class="text-white small fw-bold">
+                    <i class="far fa-calendar-alt me-1"></i>
+                    {{ session.get('fecha') or now.strftime('%d/%m/%Y') if now else 'Fecha' }}
+                  </div>
+                  <div class="vr bg-white opacity-25" style="height: 15px;"></div>
+                  <p class="mb-0 small">
+                    <i class="fas fa-user me-1"></i> {{ session.get('userAlias', 'Usuario') }}
+                  </p>
                 </div>
-                <div class="vr bg-white opacity-25" style="height: 15px;"></div>
-                <p class="mb-0 small">
-                  <i class="fas fa-user me-1"></i> {{ session.get('userAlias', 'Usuario') }}
-                </p>
+                {% if session['last_access'] %}
+                <div class="mt-1">
+                  <span class="badge bg-primary" style="font-size: 0.65rem;">
+                    <i class="fas fa-history me-1"></i>
+                    Última vez: {{ session['last_access'].strftime('%d/%m/%Y %H:%M') }}
+                  </span>
+                </div>
+                {% endif %}
               </div>
-              {% if session['last_access'] %}
-              <div class="mt-1">
-                <span class="badge bg-primary" style="font-size: 0.65rem;">
-                  <i class="fas fa-history me-1"></i>
-                  Última vez: {{ session['last_access'].strftime('%d/%m/%Y %H:%M') }}
-                </span>
-              </div>
-              {% endif %}
             </div>
-          </div>
-        </div>
+            <div>
+              <!-- Logo al final, después de Última vez -->
+              <img src="{{ url_for('static', filename='images/oip.png') }}" alt="Logo"
+                style="height: 45px; width: 45px; border-radius: 50%; object-fit: cover; margin-left: 25px; position: relative;" />
+            </div>
       </nav>
       {% endif %}
     </div>
@@ -151,12 +161,16 @@
     <div class="container">
       <div class="row">
         <div class="col-md-6 text-center text-md-start">
+          <br>
           <p class="mb-0">
             &copy; 2024 SICEB. Todos los derechos reservados.
           </p>
         </div>
         <div class="col-md-6 text-center text-md-end">
-          <p class="mb-0">RIF: J-30113539-0</p>
+          <p class="mb-0">L.P. LIDER POLLO, C.A. RIF J-30713528-0</p>
+          <p class="mb-0"> Zona Industrial El Recreo Parcela Nro. 51 Vía Flor Amarillo,</p>
+          Valencia Edo. Carabobo Telf: (0412) 801.7687 / 801.7887
+          liderpolloca@gmail.com</p>
         </div>
       </div>
     </div>
@@ -201,6 +215,92 @@
   <script src="{{ url_for('static', filename='js/main.js') }}"></script>
 
   {% block scripts %}{% endblock %} {% block extra_js %}{% endblock %}
+  <!-- Screensaver JS -->
+  <script src="{{ url_for('static', filename='js/screensaver.js') }}"></script>
+  <script>
+    // Configurar el protector de pantalla cuando el DOM esté listo
+    document.addEventListener('DOMContentLoaded', function () {
+      // Verificar si el usuario está autenticado
+      {% if session.get('logged') == True %}
+
+      // Variable para saber si el screensaver ya se mostró en esta sesión de navegación
+      let pantallaMostrada = sessionStorage.getItem('screensaver_mostrado') === 'true';
+
+      const screensaver = new ScreensaverManager({
+        inactivityTime: 60000, // 1 minuto
+        slides: [
+          {
+            image: "{{ url_for('static', filename='images/system.png') }}",
+            title: "Bienvenido a SICEB",
+            description: "Sistema de Control de Beneficios",
+            subtitle: "Gestionando tus beneficios de manera eficiente",
+            textPosition: "bottom"
+          },
+          {
+            image: "{{ url_for('static', filename='images/fondo.jpg') }}",
+            title: "Misión",
+            description: "Brindar soluciones tecnológicas integrales para la gestión eficiente de beneficios empresariales, garantizando satisfacción y valor a nuestros clientes.",
+            subtitle: "Compromiso con la excelencia",
+            textPosition: "top"
+          },
+          {
+            image: "{{ url_for('static', filename='images/fondo2.jpeg') }}",
+            title: "Visión",
+            description: "Ser líderes en innovación tecnológica para la gestión de beneficios, reconocidos por nuestra calidad y servicio excepcional en América Latina.",
+            subtitle: "Innovación constante",
+            textPosition: "bottom"
+          },
+          {
+            image: "{{ url_for('static', filename='images/fondo3.jpeg') }}",
+            title: "Nuestros Valores",
+            description: "Integridad, Innovación, Compromiso, Excelencia y Trabajo en Equipo",
+            subtitle: "Construyendo un mejor futuro",
+            textPosition: "top"
+          },
+          //{
+          //image: "{{ url_for('static', filename='images/.jpeg') }}",
+          //title: "Nuestros Valores",
+          //description: "Integridad, Innovación, Compromiso, Excelencia y Trabajo en Equipo",
+          //subtitle: "Construyendo un mejor futuro",
+          //textPosition: "top"
+          //},
+          {
+            image: "{{ url_for('static', filename='images/siceb2.png') }}",
+            title: "SICEB",
+            description: "Tu aliado estratégico en la gestión de beneficios",
+            subtitle: "Tecnología que transforma",
+            textPosition: "bottom"
+          }
+        ],
+        onDismiss: function () {
+          console.log('Screensaver cerrado');
+          // Marcar que ya se mostró para esta sesión
+          sessionStorage.setItem('screensaver_mostrado', 'true');
+        }
+      });
+
+      // MOSTRAR AL INICIO SOLO UNA VEZ POR SESIÓN DE NAVEGACIÓN
+      // Verificar:
+      // 1. No se ha mostrado antes en esta pestaña
+      // 2. No estamos en página de login
+      const isLoginPage = window.location.pathname.includes('/login') ||
+        window.location.pathname.includes('/auth/login');
+
+      if (!pantallaMostrada && !isLoginPage) {
+        console.log('Mostrando screensaver por primera vez');
+        setTimeout(function () {
+          screensaver.show();
+        }, 500);
+      } else {
+        console.log('Screensaver ya mostrado en esta sesión, no se muestra al cargar');
+      }
+
+      {% endif %}
+    });
+  </script>
+</body>
+
+</html>
 </body>
 
 </html>
