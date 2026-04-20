@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from flask import Flask, send_from_directory
-from config.database import get_connection as get_db_connection
+from config.database import get_db_connection
 from utils.helpers import dateformat, from_json
 
 # Paso 2: Importamos cada uno de los módulos (Blueprints) que controlan diferentes partes del sistema
