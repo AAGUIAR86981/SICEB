@@ -1,4 +1,4 @@
-from config.database import get_db_connection
+from config.database import get_connection as get_db_connection
 from passlib.hash import pbkdf2_sha256
 import secrets
 from datetime import datetime, timedelta
