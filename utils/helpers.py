@@ -9,7 +9,7 @@ from email.mime.multipart import MIMEMultipart
 from flask import Response, url_for, request
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, PatternFill
-from config.database import get_connection as get_db_connection
+from config.database import get_db_connection
 import json
 
 # Caja de Herramientas: Funciones de ayuda para fechas, correos, archivos y registros del sistema
