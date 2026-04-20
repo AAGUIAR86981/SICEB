@@ -14,43 +14,35 @@ def get_connection():
         password=os.getenv('DB_PASSWORD'),
         database=os.getenv('DB_NAME'),
         port=int(os.getenv("DB_PORT", 3306))
+cursorclass=pymysql.cursors.DictCursor
     )
-
-          # return connection
-    except mariadb.Error as err:
-        # LOGICA DE EMERGENCIA: Si la base de datos no existe (Error 1049), intentamos crearla automáticamente
-        if err.errno == 1049:
-            try:
-                # Nos conectamos al servidor sin especificar base de datos para poder crearla desde cero
-                connection = mariadb.connect(
-                    host=os.getenv("DB_HOST"),
-                    port=int(os.getenv("DB_PORT", 3306)),
-                    user=os.getenv("DB_USER"),
-                    password=os.getenv("DB_PASSWORD"),
-                )
-                cursor = connection.cursor()
-                db_name = os.getenv("DB_NAME")
-                if not db_name:
-                    raise ValueError("Falta definir DB_NAME en el archivo .env")
-                
-                # Creamos la base de datos con soporte para caracteres especiales (emojis, tildes, etc.)
-                cursor.execute(f"CREATE DATABASE IF NOT EXISTS {db_name} CHARACTER SET utf8mb4 COLLATE utf8mb4_bin")
-                cursor.close()
-                connection.close()
+         return connection
+    except pymysql.MySQLError as err:
+        # LOGICA DE EMERGENCIA corregida para PyMySQL
+        print(f"Error conectando: {err}")
+        # Si el error es que la base de datos no existe (1049)
+        if err.args[0] == 1049:
+            # Aquí podrías poner la lógica para crearla, 
+            # pero en Railway la base de datos ya viene creada.
+            pass
+        raise err
 
                 # Ahora que ya existe, nos conectamos formalmente a ella
-                connection = mariadb.connect(
-                    host=os.getenv("DB_HOST"),
-                    port=int(os.getenv("DB_PORT", 3306)),
-                    user=os.getenv("DB_USER"),
-                    password=os.getenv("DB_PASSWORD"),
-                    database=os.getenv("DB_NAME")
+                connection =pymysql.connect((
+                    host=os.getenv('DB_HOST'),
+                    user=os.getenv('DB_USER'),
+                    password=os.getenv('DB_PASSWORD'),
+                    database=os.getenv('DB_NAME'),
+                    port=int(os.getenv("DB_PORT", 3306))
                 )
                 return connection
-            except mariadb.Error as err:
-                print(f"No pudimos crear la base de datos automáticamente: {err}")
-                raise
-        else:
+            except pymysql.MySQLError as err:
+        print(f"No pudimos conectar o crear la base de datos: {err}")
+        # En Railway, la DB se crea desde el panel, así que aquí solo lanzamos el error
+        raise err
+    else:
+        # Si la conexión fue exitosa, la devolvemos
+        return connection
             raise
 
 def init_db_tables():
