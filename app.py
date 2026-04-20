@@ -1,5 +1,7 @@
 import pymysql
-pymysql.install_as_MySQLdb()
+pymysql.install_as_MySQLdb()  # Esto debe ir ANTES de cualquier otro import de base de datos
+from flask import Flask, render_template
+# ... el resto de tus imports
 import os
 from dotenv import load_dotenv
 
