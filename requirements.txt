@@ -6,6 +6,7 @@ python-dotenv
 openpyxl
 pandas
 Pillow
+xhtml2pdf
 ansi==0.3.6
 beautifulsoup4==4.13.4
 blinker==1.9.0
