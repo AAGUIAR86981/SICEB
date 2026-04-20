@@ -1,11 +1,11 @@
 from flask import Blueprint, render_template, session, flash, redirect, url_for, request, Response
 from utils.decorators import login_required, permission_required
 from utils.helpers import dateformat, from_json, log_user_activity, exportar_csv, exportar_excel_generic
+from config.database import get_db_connection
 from datetime import datetime
 import logging
 import json
 import requests
-import mariadb
 from models.provision import Provision
 from models.employee import Employee
 from models.combos_model import ComboModel
