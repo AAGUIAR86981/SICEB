@@ -27,9 +27,9 @@ jmespath==1.0.1
 jsonify==0.5
 lml==0.2.0
 load-dotenv==0.1.0
-mariadb==1.1.12
 Markdown==3.4.4
 MarkupSafe==3.0.2
+pymysql
 packaging==25.0
 passlib==1.7.4
 PBKDF==1.0
