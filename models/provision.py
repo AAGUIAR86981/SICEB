@@ -124,7 +124,7 @@ class Provision:
 
             conn.commit()
             return provision_id
-        except mariadb.Error as e:
+        except Exception as e:
             logger.error(f"Error de base de datos en save_history: {e}")
             if conn: conn.rollback()
             # Relanzar para que el controlador pueda manejar errores específicos como el 1062
@@ -191,7 +191,7 @@ class Provision:
         item_cursor = None
         try:
             conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True)
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
             cursor.execute("SELECT id, nombre, descripcion FROM combos WHERE activo = TRUE")
             combos = cursor.fetchall()
             
@@ -252,7 +252,7 @@ class Provision:
         cursor = None
         try:
             conn = get_db_connection()
-            cursor = conn.cursor(dictionary=True)
+            cursor = conn.cursor(pymysql.cursors.DictCursor)
             
             query = """
                 SELECT 
@@ -317,7 +317,7 @@ def obtener_reporte_beneficios_completo(cedula='', nombre='', semana='', tipo_no
     if not conn:
         return []
     
-    cursor = conn.cursor(dictionary=True)
+    cursor = conn.cursor(pymysql.cursors.DictCursor)
     
     # Consulta adaptada a tu estructura de base de datos
     query = """
