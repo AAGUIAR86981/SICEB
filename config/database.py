@@ -1,4 +1,4 @@
-import mariadb
+import pymysql
 from passlib.hash import pbkdf2_sha256
 import os
 from dotenv import load_dotenv
@@ -6,16 +6,16 @@ from dotenv import load_dotenv
 # Conexión Central: Aquí configuramos el acceso al 'cerebro' del sistema (la base de datos MariaDB)
 load_dotenv()
 
-def get_db_connection():
-    """Establece un puente entre el programa de Python y la base de datos MariaDB"""
-    try:
-        connection = mariadb.connect(
-            host=os.getenv("DB_HOST"),
-            port=int(os.getenv("DB_PORT", 3306)),
-            user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASSWORD"),
-            database=os.getenv("DB_NAME")
-        )
+def get_connection():
+    # Railway nos da la DATABASE_URL, pero si prefieres desglosarla:
+    return pymysql.connect(
+        host=os.getenv('DB_HOST'),
+        user=os.getenv('DB_USER'),
+        password=os.getenv('DB_PASSWORD'),
+        database=os.getenv('DB_NAME'),
+        port=int(os.getenv("DB_PORT", 3306))
+    )
+
         return connection
     except mariadb.Error as err:
         # LOGICA DE EMERGENCIA: Si la base de datos no existe (Error 1049), intentamos crearla automáticamente
