@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 # Conexión Central: Aquí configuramos el acceso al 'cerebro' del sistema (la base de datos MariaDB)
 load_dotenv()
 
-def get_connection():
+def get_db_connection():
     try:
         connection = pymysql.connect(
             host=os.getenv("DB_HOST"),
