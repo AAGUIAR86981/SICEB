@@ -2,6 +2,7 @@ from config.database import get_db_connection
 from datetime import datetime
 import json
 import logging
+import pymysql.cursors
 from models.employee import Employee
 
 # Configuramos el sistema de log para anotar cualquier evento importante en este módulo de provisiones
