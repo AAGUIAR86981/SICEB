@@ -1,7 +1,7 @@
 # controllers/auth.py - Módulo encargado de la seguridad y el acceso al sistema
 from flask import Blueprint, request, render_template, session, flash, redirect, url_for, jsonify
 from passlib.hash import pbkdf2_sha256
-from config.database import get_db_connection
+from config.database import get_connection as get_db_connection
 from utils.helpers import log_user_activity, send_reset_email
 from utils.decorators import login_required, admin_required, permission_required 
 
