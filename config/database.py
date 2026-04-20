@@ -16,7 +16,7 @@ def get_connection():
         port=int(os.getenv("DB_PORT", 3306))
     )
 
-        return connection
+          # return connection
     except mariadb.Error as err:
         # LOGICA DE EMERGENCIA: Si la base de datos no existe (Error 1049), intentamos crearla automáticamente
         if err.errno == 1049:
